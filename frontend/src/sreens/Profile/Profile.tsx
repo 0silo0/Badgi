@@ -70,7 +70,7 @@ export default function ProfilePage({ setIsAuthenticated }: ProfileProps) {
 
   const logoutUser = async () => {
     try {
-      const response = await fetch('http://localhost:4132/api/auth/logout', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/auth/logout`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

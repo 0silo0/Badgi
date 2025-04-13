@@ -5,7 +5,7 @@ import app from './application';
 import prisma from './prisma';
 import { connectToRedis } from './config/redis';
 
-const PORT = process.env.PORT || 4132;
+const PORT = process.env.PORT || 4142;
 
 async function main() {
   try {
