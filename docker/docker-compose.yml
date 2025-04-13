@@ -1,7 +1,9 @@
 services:
   redis:
-    image: redis:latest
     container_name: redis
+    build:
+      context: ../redis
+      dockerfile: redis.Dockerfile
     ports:
       - "6379:6379"
     volumes:
@@ -10,6 +12,7 @@ services:
     command: redis-server /usr/local/etc/redis/redis.conf  # Указываем конфигурационный файл
     restart: always
   backend:
+    container_name: backend
     build:
       context: ../backend
       dockerfile: backend.Dockerfile
@@ -17,13 +20,14 @@ services:
       - "4132:4132"
     volumes:
       - ../backend:/app
-      - /app/node_modules
+      # - /app/node_modules
     environment:
       - NODE_ENV=development
       - REDIS_URL=redis://redis:6379
     depends_on:
       - redis
   frontend:
+    container_name: frontend
     build:
       context: ../frontend
       dockerfile: frontend.Dockerfile
@@ -31,17 +35,20 @@ services:
       - "3000:3000"
     volumes:
       - ../frontend:/app
-      - /app/node_modules 
+      # - /app/node_modules 
     environment:
       - NODE_ENV=development
   admin:
+    container_name: admin
     build:
       context: ../admin
       dockerfile: admin.Dockerfile
     ports:
-      - "4000:80"
+      - "3001:3001"
     volumes:
       - ../admin:/app
-      - /app/node_modules
+      # - /app/node_modules
+    environment:
+      - PORST=3001
 volumes:
   redis_data:
