@@ -7,7 +7,15 @@ const app = express();
 
 app.use(
     cors({
-      origin: ['http://localhost:3000', 'http://localhost:3001'],
+      origin: [
+        'http://localhost:3000',
+        'http://localhost:4000',
+        'http://localhost:3001',
+        'http://176.123.160.42:3100',
+        'http://176.123.160.42:3101',
+        'https://176.123.160.42:3100',
+        'https://176.123.160.42:3101',
+      ],
       methods: ['GET', 'POST', 'PUT', 'DELETE'],
       allowedHeaders: ['Content-Type', 'Authorization'],
       credentials: true,
