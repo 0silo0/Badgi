@@ -11,7 +11,7 @@ CREATE TABLE role (
 -- Создание таблицы accounts
 CREATE TABLE accounts (
     primarykey UUID PRIMARY KEY,
-    login VARCHAR(30) NOT NULL,
+    login VARCHAR(30) NOT NULL UNIQUE,
     email VARCHAR(255) UNIQUE NOT NULL,
     password TEXT NOT NULL,
     firstName VARCHAR(50),
