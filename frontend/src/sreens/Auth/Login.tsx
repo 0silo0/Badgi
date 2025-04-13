@@ -92,7 +92,7 @@ export default function Login({ setIsAuthenticated }: LoginProps) {
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
               />
-              <span className="red-checkbox"></span>
+              <span className="custom-checkbox"></span>
               <span className="terms-text">Запомнить меня</span>
             </label>
           </div>

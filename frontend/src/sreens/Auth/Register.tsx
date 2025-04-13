@@ -1,15 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FiEye, FiEyeOff } from 'react-icons/fi';
+import TermsModal from './TermsModal';
 import './AuthStyles.scss';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    accountFIO: '',
     login: '',
     email: '',
+    status: '',
     password: '',
     confirmPassword: '',
   });
@@ -18,76 +19,118 @@ export default function RegisterPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [error, setError] = useState('');
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [tempAgreeState, setTempAgreeState] = useState(false);
+
+
+  // Обработчик прямого клика по чекбоксу
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setAgreeTerms(e.target.checked);
+  };
+
+  // Открытие модалки с сохранением текущего состояния
+  const openTermsModal = () => {
+    setTempAgreeState(agreeTerms);
+    setShowTermsModal(true);
+  };
+
+  // Подтверждение в модалке
+  const handleTermsConfirm = () => {
+    setAgreeTerms(true);
+    setShowTermsModal(false);
+  };
+
+  // Закрытие модалки с восстановлением состояния
+  const handleTermsClose = () => {
+  setAgreeTerms(tempAgreeState);
+  setShowTermsModal(false);
+  };
 
   const handleInputChange = (field: keyof typeof formData) => 
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setFormData(prev => ({ ...prev, [field]: e.target.value }));
-    };
+  };
 
-    const handleRegister = async (e: React.FormEvent) => {
-      e.preventDefault();
-  
-      if (formData.password !== formData.confirmPassword) {
-        setError('Пароли не совпадают');
-        return;
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Пароли не совпадают');
+      return;
+    }
+
+    if (!formData.status) {
+      setError('Необходимо выбрать статус');
+      return;
+    }
+
+    if (!agreeTerms) {
+      setError('Необходимо согласиться с условиями');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          accountFIO: formData.accountFIO,
+          email: formData.email,
+          login: formData.login,
+          status: formData.status,
+          password: formData.password,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Ошибка при регистрации');
       }
-  
-      if (!agreeTerms) {
-        setError('Необходимо согласиться с условиями');
-        return;
-      }
-  
-      try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/auth/register`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            email: formData.email,
-            login: formData.login,
-            password: formData.password,
-          }),
-        });
-  
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Ошибка при регистрации');
-        }
-  
-        navigate('/login');
-      } catch (err) {
-        console.error('Ошибка при регистрации:', err);
-        setError(err instanceof Error ? err.message : 'Произошла ошибка');
-      }
-    };
+
+      navigate('/login');
+    } catch (err) {
+      console.error('Ошибка при регистрации:', err);
+      setError(err instanceof Error ? err.message : 'Произошла ошибка');
+    }
+  };
 
   return (
     <div className="auth-wrapper">
       <div className="auth-container">
         <h2>Создать аккаунт</h2>
         <form onSubmit={handleRegister}>
-        {error && <div className="error-message">{error}</div>}
-          <div className="input-field">
-            <input
-              type="text"
-              placeholder="Введите ваше Имя"
-              value={formData.firstName}
-              onChange={handleInputChange('firstName')}
-            />
-            <label>Имя</label>
-          </div>
+          {error && <div className="error-message">{error}</div>}
 
           <div className="input-field">
             <input
               type="text"
-              placeholder="Введите вашу Фамилию"
-              value={formData.lastName}
-              onChange={handleInputChange('lastName')}
+              placeholder="Введите ваше ФИО"
+              value={formData.accountFIO}
+              onChange={handleInputChange('accountFIO')}
             />
-            <label>Фамилия</label>
+            <label>ФИО</label>
+          </div>
+
+          <div className="input-field">
+            <div className="custom-select-wrapper">
+              <select
+                value={formData.status}
+                onChange={(e) => setFormData({...formData, status: e.target.value})}
+                className="custom-select-stat"
+                required
+                defaultValue=""
+              >
+                <option value="" disabled hidden className="placeholder-option">
+                  Выберите статус
+                </option>
+                <option value="guest">Гость</option>
+                <option value="student">Студент</option>
+                <option value="teacher">Преподаватель</option>
+              </select>
+              <label>Статус</label>
+            </div>
           </div>
 
           <div className="input-field">
@@ -149,11 +192,17 @@ export default function RegisterPage() {
               <input
                 type="checkbox"
                 checked={agreeTerms}
-                onChange={(e) => setAgreeTerms(e.target.checked)}
+                onChange={handleCheckboxChange}
               />
-              <span className="red-checkbox"></span>
+              <span className="custom-checkbox"></span>
               <span className="terms-text">
-                Я даю согласие на <Link to="/terms">обработку персональных данных</Link>
+                Я даю согласие на{' '}
+                <span 
+                  style={{ color: '#db233d', cursor: 'pointer' }}
+                  onClick={() => setShowTermsModal(true)}
+                >
+                  обработку персональных данных
+                </span>
               </span>
             </label>
           </div>
@@ -166,6 +215,14 @@ export default function RegisterPage() {
             Зарегистрироваться
           </button>
         </form>
+
+        {showTermsModal && (
+          <TermsModal 
+              onClose={handleTermsClose}
+              onConfirm={handleTermsConfirm}
+              initialChecked={tempAgreeState}
+         />
+        )}
 
         <div className="auth-footer">
           Уже есть аккаунт? <Link to="/login">Войти</Link>
