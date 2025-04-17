@@ -7,7 +7,8 @@ import './AuthStyles.scss';
 export default function RegisterPage() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    accountFIO: '',
+    firstName: '',
+    lastName: '',
     login: '',
     email: '',
     status: '',
@@ -76,7 +77,8 @@ export default function RegisterPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          accountFIO: formData.accountFIO,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
           email: formData.email,
           login: formData.login,
           status: formData.status,
@@ -106,12 +108,23 @@ export default function RegisterPage() {
           <div className="input-field">
             <input
               type="text"
-              placeholder="Введите ваше ФИО"
-              value={formData.accountFIO}
-              onChange={handleInputChange('accountFIO')}
+              placeholder="Введите ваше Имя"
+              value={formData.firstName}
+              onChange={handleInputChange('firstName')}
             />
-            <label>ФИО</label>
+            <label>Имя</label>
           </div>
+
+          <div className="input-field">
+            <input
+              type="text"
+              placeholder="Введите вашу Фамилию"
+              value={formData.lastName}
+              onChange={handleInputChange('lastName')}
+            />
+            <label>Фамилия</label>
+          </div>
+
 
           <div className="input-field">
             <div className="custom-select-wrapper">

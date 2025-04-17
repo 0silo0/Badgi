@@ -2,17 +2,19 @@
 FROM node:20.18.0-alpine AS builder
 WORKDIR /usr/src/app
 
-RUN apk add --no-cache openssl
+RUN apk add --no-cache openssl python3 make g++
 
+# 1. Сначала копируем только то, что нужно для установки зависимостей
 COPY package*.json ./
-RUN npm ci
+COPY prisma ./prisma/
 
-COPY . .
+# 2. Устанавливаем зависимости и генерируем Prisma Client
+RUN npm ci --include=dev
 RUN npx prisma generate
-RUN npm run build
 
-# Удаляем ненужные зависимости (devDependencies)
-RUN npm prune --production
+# 3. Копируем остальные файлы и собираем проект
+COPY . .
+RUN npm run build
 
 # Stage 2: Production
 FROM node:20.18.0-alpine
@@ -20,11 +22,14 @@ WORKDIR /usr/src/app
 
 RUN apk add --no-cache openssl
 
+# Копируем ВСЕ необходимые файлы из builder
 COPY --from=builder /usr/src/app/node_modules ./node_modules
 COPY --from=builder /usr/src/app/dist ./dist
-COPY --from=builder /usr/src/app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /usr/src/app/package*.json ./
 COPY --from=builder /usr/src/app/prisma ./prisma
 COPY .env ./
 
-CMD ["npm", "start"]
+# Проверяем наличие сгенерированного клиента Prisma
+RUN ls -la node_modules/.prisma/client
+
+CMD ["node", "dist/main.js"]

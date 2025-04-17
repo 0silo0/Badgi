@@ -36,7 +36,8 @@ export default function ProfilePage({ setIsAuthenticated }: ProfileProps) {
   const [avatar, setAvatar] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     status: 'guest' as UserStatus,
-    fullName: 'Фамилия Имя Отчество',
+    firstName: '',
+    lastName: '',
     faculty: faculties[0],
     degree: degrees[0],
     department: '',
@@ -493,12 +494,21 @@ export default function ProfilePage({ setIsAuthenticated }: ProfileProps) {
         {isEditing ? (
           <form className="profile-form" onSubmit={handleSubmit}>
             <div className="form-group">
-              <label>ФИО</label>
+              <label>Имя</label>
               <input
                 className="custom-input"
-                value={formData.fullName}
-                onChange={(e) => setFormData({...formData, fullName: e.target.value})}
+                value={formData.firstName}
+                onChange={(e) => setFormData({...formData, firstName: e.target.value})}
               />
+            </div>
+
+            <div className="form-group">
+              <label>Фамилия</label>
+                <input
+                  className="custom-input"
+                  value={formData.lastName}
+                  onChange={(e) => setFormData({...formData, lastName: e.target.value})}
+                />
             </div>
 
             {renderEditFields()}
@@ -520,7 +530,7 @@ export default function ProfilePage({ setIsAuthenticated }: ProfileProps) {
           </form>
         ) : (
           <div className="profile-info">
-            <h1 className="full-name">{formData.fullName}</h1>
+            <h1 className="full-name">{formData.firstName + ' ' + formData.lastName}</h1>
             <p className="status">{formData.status === 'student' ? 'Студент' : 
               formData.status === 'teacher' ? 'Преподаватель' : 'Гость'}</p>
 

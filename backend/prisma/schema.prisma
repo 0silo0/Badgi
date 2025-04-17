@@ -1,9 +1,13 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
 generator client {
-  provider      = "prisma-client-js"
-  binaryTargets = ["native", "debian-openssl-3.0.x"]
+  provider = "prisma-client-js"
+  // output   = "../generated/prisma"
+  output = "../node_modules/.prisma/client"
 }
 
 datasource db {
@@ -20,8 +24,8 @@ model Account {
   lastName   String    @map("lastname")
   role       String?
   roleRef    Role?     @relation("accountRole", fields: [role], references: [primarykey]) // Связать с role
-  createTime DateTime  @default(now()) @map("createtime")
-  editTime   DateTime  @default(now()) @updatedAt @map("edittime")
+  createAt DateTime  @default(now()) @map("createat")
+  editAt   DateTime  @default(now()) @updatedAt @map("editat")
   avatarUrl  String?   @map("avatarurl")
   status     String?
   creator    String?
@@ -29,16 +33,16 @@ model Account {
 
   createdTeams      Team[]
   createdProjects   Project[]
-  assignedTasks     Task[] @relation("createBy")
-  createdTasks      Task[] @relation("assignedTo")
+  assignedTasks     Task[] @relation("taskAssignee")
+  createdTasks      Task[] @relation("taskAuthor")
   teamMembers       TeamMember[]
   taskComments      TaskComment[]
   taskAttachments   TaskAttachment[]
   chatMembers       ChatMember[]
   createdChats      Chat[]
   chatMessages      ChatMessage[]
-  userSettings      UserSettings? @relation("userId")
-  ReadMessage ReadMessage[] @relation("userId")
+  userSettings      UserSettings? @relation("accountRef")
+  ReadMessage ReadMessage[] @relation("accountId")
   
   @@map("accounts") // Указываем, что таблица называется "accounts"
   @@index([email], name: "idx_accounts_email") // Индекс для email
@@ -48,8 +52,8 @@ model Account {
 model Role {
   primarykey String    @id @default(uuid()) @map("primarykey") // UUID как primary key
   name String
-  createTime DateTime  @default(now()) @map("createtime")
-  editTime   DateTime  @default(now()) @updatedAt @map("edittime")
+  createAt DateTime  @default(now()) @map("createat")
+  editAt   DateTime  @default(now()) @updatedAt @map("editat")
 
   role Account[]       @relation("accountRole")
   creator Account[]    @relation("accountCreator")
@@ -61,9 +65,9 @@ model Team {
   primarykey          String    @id @default(uuid())
   name        String
   description String?
-  createdAt   DateTime  @default(now()) @map("createAt")
-  createdById String    @map("createBy")
-  createdBy   Account   @relation(fields: [createdById], references: [primarykey])
+  createdAt   DateTime  @default(now()) @map("createat")
+  createdBy String    @map("createBy")
+  createdRef   Account   @relation(fields: [createdBy], references: [primarykey])
   
   members     TeamMember[]
   projects    Project[]
@@ -75,10 +79,10 @@ model TeamMember {
   primarykey        String        @id @default(uuid())
   teamId    String        @map("team")
   team      Team          @relation(fields: [teamId], references: [primarykey])
-  userId    String        @map("user")
-  user      Account       @relation(fields: [userId], references: [primarykey])
+  accountId    String        @map("accountid")
+  account      Account       @relation(fields: [accountId], references: [primarykey])
   role      String
-  joinedAt  DateTime      @default(now()) @map("joined_at")
+  joinedAt  DateTime      @default(now()) @map("joinedat")
 
   @@map("teammembers")
 }
@@ -87,11 +91,11 @@ model Project {
   primarykey          String    @id @default(uuid())
   name        String
   description String?
-  createdAt   DateTime  @default(now()) @map("createAt")
-  createdById String    @map("createBy")
-  createdBy   Account   @relation(fields: [createdById], references: [primarykey])
-  teamId      String    @map("team")
-  team        Team      @relation(fields: [teamId], references: [primarykey])
+  createdAt   DateTime  @default(now()) @map("createdat")
+  createdBy String    @map("createby")
+  createdRef   Account   @relation(fields: [createdBy], references: [primarykey])
+  team      String    @map("team")
+  teamRef        Team      @relation(fields: [team], references: [primarykey])
   status      String?
   
   tasks       Task[]
@@ -103,17 +107,17 @@ model Task {
   primarykey           String        @id @default(uuid())
   title        String
   description  String?
-  projectId    String        @map("projectId")
-  project      Project       @relation(fields: [projectId], references: [primarykey])
-  createdById  String        @map("createBy")
-  createdBy    Account       @relation("createBy", fields: [createdById], references: [primarykey])
-  assignedToId String?       @map("assignedTo")
-  assignedTo   Account?      @relation("assignedTo",fields: [assignedToId], references: [primarykey])
+  project    String        @map("project")
+  projectRef      Project       @relation(fields: [project], references: [primarykey])
+  createdBy  String        @map("createby")
+  createdByRef    Account       @relation("taskAuthor", fields: [createdBy], references: [primarykey])
+  assignedTo String?       @map("assignedto")
+  assignedToRef   Account?      @relation("taskAssignee", fields: [assignedTo], references: [primarykey])
   status       String
   priority     String?
-  dueDate      DateTime?     @map("due_date")
-  createdAt    DateTime      @default(now()) @map("createAt")
-  updatedAt    DateTime      @default(now()) @updatedAt @map("updateAt")
+  dueDate      DateTime?     @map("duedate")
+  createdAt    DateTime      @default(now()) @map("createat")
+  updatedAt    DateTime      @default(now()) @updatedAt @map("updateat")
   
   comments     TaskComment[]
   attachments  TaskAttachment[]
@@ -124,13 +128,13 @@ model Task {
 
 model TaskComment {
   primarykey        String    @id @default(uuid())
-  taskId    String    @map("task_id")
+  taskId    String    @map("taskid")
   task      Task      @relation(fields: [taskId], references: [primarykey])
-  userId    String    @map("user")
-  user      Account   @relation(fields: [userId], references: [primarykey])
+  account    String    @map("account")
+  accountRef      Account   @relation(fields: [account], references: [primarykey])
   comment   String
-  createdAt DateTime  @default(now()) @map("createAt")
-  updatedAt DateTime  @default(now()) @updatedAt @map("updateAt")
+  createdAt DateTime  @default(now()) @map("createdat")
+  updatedAt DateTime  @default(now()) @updatedAt @map("updatedat")
 
   @@map("taskcomments")
 }
@@ -140,9 +144,9 @@ model TaskAttachment {
   taskId      String    @map("task")
   task        Task      @relation(fields: [taskId], references: [primarykey])
   file        String
-  uploadedById String   @map("uploadedBy")
-  uploadedBy  Account   @relation(fields: [uploadedById], references: [primarykey])
-  uploadedAt  DateTime  @default(now()) @map("uploadetAt")
+  uploadedBy String   @map("uploadedby")
+  uploadedRef  Account   @relation(fields: [uploadedBy], references: [primarykey])
+  uploadedAt  DateTime  @default(now()) @map("uploadedtat")
 
   @@map("taskattachments")
 }
@@ -159,18 +163,18 @@ model Tag {
 
 model TaskTag {
   primarykey      String    @id @default(uuid())
-  taskId  String    @map("task")
-  task    Task      @relation(fields: [taskId], references: [primarykey])
-  tagId   String    @map("tag")
-  tag     Tag       @relation(fields: [tagId], references: [primarykey])
+  task  String    @map("task")
+  taskRef    Task      @relation(fields: [task], references: [primarykey])
+  tag   String    @map("tag")
+  tagRef     Tag       @relation(fields: [tag], references: [primarykey])
 
   @@map("tasktags")
 }
 
 model UserSettings {
   primarykey              String    @id @default(uuid())
-  userId          String    @unique @map("user")
-  user            Account   @relation("userId", fields: [userId], references: [primarykey])
+  account          String    @unique @map("accountid")
+  accountRef            Account   @relation("accountRef", fields: [account], references: [primarykey])
   theme           String
   language        String
   isNotifications Boolean   @default(true) @map("isnotifications")
@@ -182,8 +186,8 @@ model File {
   primarykey        String    @id @default(uuid())
   value     String
   type      String
-  createdAt DateTime  @default(now()) @map("creat_at")
-  updatedAt DateTime  @default(now()) @updatedAt @map("updateAt")
+  createdAt DateTime  @default(now()) @map("createdat")
+  updatedAt DateTime  @default(now()) @updatedAt @map("updatedat")
 
   @@map("file")
 }
@@ -193,8 +197,8 @@ model Chat {
   title        String
   description  String?
   photo        String?
-  userId       String    @map("user")
-  user         Account   @relation(fields: [userId], references: [primarykey])
+  account       String    @map("account")
+  accountRef         Account   @relation(fields: [account], references: [primarykey])
   
   members      ChatMember[]
   messages     ChatMessage[]
@@ -206,23 +210,23 @@ model ChatMember {
   primarykey      String    @id @default(uuid())
   chatId  String    @map("chat")
   chat    Chat      @relation(fields: [chatId], references: [primarykey])
-  userId  String    @map("user")
-  user    Account   @relation(fields: [userId], references: [primarykey])
+  account  String    @map("account")
+  accountRef    Account   @relation(fields: [account], references: [primarykey])
 
   @@map("chat_members")
-  @@unique([chatId, userId])
+  @@unique([chatId, account])
 }
 
 model ChatMessage {
   primarykey        String    @id @default(uuid())
   chatId    String    @map("chat")
   chat      Chat      @relation(fields: [chatId], references: [primarykey])
-  userId    String    @map("user")
-  user      Account   @relation(fields: [userId], references: [primarykey])
+  account    String    @map("account")
+  accountRef      Account   @relation(fields: [account], references: [primarykey])
   content   String
   isEdited  Boolean   @default(false) @map("isedited")
-  createdAt DateTime  @default(now()) @map("createAt")
-  updatedAt DateTime  @default(now()) @updatedAt @map("updateAt")
+  createdAt DateTime  @default(now()) @map("createat")
+  updatedAt DateTime  @default(now()) @updatedAt @map("updateat")
   
   readStatus ReadMessage[]
 
@@ -230,13 +234,13 @@ model ChatMessage {
 }
 
 model ReadMessage {
-  messageId String      @map("message")
-  message   ChatMessage @relation(fields: [messageId], references: [primarykey])
-  userId    String      @map("user")
-  user      Account     @relation("userId", fields: [userId], references: [primarykey])
+  message String      @map("message")
+  messageRef   ChatMessage @relation(fields: [message], references: [primarykey])
+  account    String      @map("account")
+  accountRef      Account     @relation("accountId", fields: [account], references: [primarykey])
   isRead    Boolean     @default(false) @map("isread")
 
-  @@id([messageId, userId])
+  @@id([message, account])
   @@map("read_message")
 }
 
@@ -247,7 +251,7 @@ model AppLog {
   timestamp      DateTime
   machineName    String    @map("machinename")
   appDomainName  String    @map("appdomainname")
-  processId      String    @map("processId")
+  processId      String    @map("processid")
   message        String
 
   @@map("applogs")

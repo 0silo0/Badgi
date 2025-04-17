@@ -1,176 +1,238 @@
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
-
--- Создание таблицы role
-CREATE TABLE role (
-    primarykey UUID PRIMARY KEY,
+-- Таблица roles
+CREATE TABLE roles (
+    primarykey UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
-    create_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    update_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    createat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    editat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Создание таблицы accounts
+-- Таблица accounts
 CREATE TABLE accounts (
-    primarykey UUID PRIMARY KEY,
-    login VARCHAR(30) NOT NULL UNIQUE,
+    primarykey UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    login VARCHAR(255) UNIQUE NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     password TEXT NOT NULL,
-    firstName VARCHAR(50),
-    lastName VARCHAR(50),
-    role UUID REFERENCES role(primarykey),
-    createTime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    editTime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    avatarUrl TEXT,
-    status VARCHAR(50),
-    creator UUID REFERENCES role(primarykey)
+    firstname VARCHAR(255),
+    lastname VARCHAR(255),
+    role UUID REFERENCES roles(primarykey),
+    createat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    editat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    avatarurl TEXT,
+    status VARCHAR(255),
+    creator UUID REFERENCES roles(primarykey)
 );
 
+-- Индексы для accounts
 CREATE INDEX idx_accounts_email ON accounts(email);
-CREATE INDEX idx_accounts_username ON accounts(username);
+CREATE INDEX idx_accounts_login ON accounts(login);
 
 -- Таблица teams
 CREATE TABLE teams (
-    primarykey UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR NOT NULL,
+    primarykey UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(255) NOT NULL,
     description TEXT,
-    createAt TIMESTAMP NOT NULL DEFAULT NOW(),
-    createBy UUID NOT NULL REFERENCES accounts(primarykey)
+    createat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    createby UUID NOT NULL REFERENCES accounts(primarykey)
 );
 
--- Таблица team_members
-CREATE TABLE teamMembers (
-    primarykey UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+-- Таблица teammembers
+CREATE TABLE teammembers (
+    primarykey UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     team UUID NOT NULL REFERENCES teams(primarykey) ON DELETE CASCADE,
-    user UUID NOT NULL REFERENCES accounts(primarykey) ON DELETE CASCADE,
-    role VARCHAR NOT NULL,
-    joinedAt TIMESTAMP NOT NULL DEFAULT NOW(),
-    UNIQUE(team, user)
+    accountid UUID NOT NULL REFERENCES accounts(primarykey) ON DELETE CASCADE,
+    role VARCHAR(255) NOT NULL,
+    joinedat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Уникальный индекс для teammembers
+CREATE UNIQUE INDEX idx_teammembers_team_account ON teammembers(team, accountid);
 
 -- Таблица projects
 CREATE TABLE projects (
-    primarykey UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR NOT NULL,
+    primarykey UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(255) NOT NULL,
     description TEXT,
-    createAt TIMESTAMP NOT NULL DEFAULT NOW(),
-    createBy UUID NOT NULL REFERENCES accounts(primarykey),
+    createdat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    createby UUID NOT NULL REFERENCES accounts(primarykey),
     team UUID NOT NULL REFERENCES teams(primarykey) ON DELETE CASCADE,
-    status VARCHAR
+    status VARCHAR(255)
 );
+
+CREATE INDEX idx_projects_team ON projects(team);
 
 -- Таблица tasks
 CREATE TABLE tasks (
-    primarykey UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    title VARCHAR NOT NULL,
+    primarykey UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    title VARCHAR(255) NOT NULL,
     description TEXT,
-    projectId UUID NOT NULL REFERENCES projects(primarykey) ON DELETE CASCADE,
-    createBy UUID NOT NULL REFERENCES accounts(primarykey),
-    assignedTo UUID REFERENCES accounts(primarykey),
-    status VARCHAR,
-    priority VARCHAR,
-    dueDate TIMESTAMP,
-    createAt TIMESTAMP NOT NULL DEFAULT NOW(),
-    updateAt TIMESTAMP NOT NULL DEFAULT NOW()
+    project UUID NOT NULL REFERENCES projects(primarykey) ON DELETE CASCADE,
+    createby UUID NOT NULL REFERENCES accounts(primarykey),
+    assignedto UUID REFERENCES accounts(primarykey),
+    status VARCHAR(255) NOT NULL,
+    priority VARCHAR(255),
+    duedate TIMESTAMP,
+    createat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updateat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Таблица task_comments
-CREATE TABLE taskComments (
-    primarykey UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    taskId UUID NOT NULL REFERENCES tasks(primarykey) ON DELETE CASCADE,
-    user UUID NOT NULL REFERENCES accounts(primarykey),
+CREATE INDEX idx_tasks_project_status ON tasks(project, status);
+CREATE INDEX idx_tasks_assignedto ON tasks(assignedto);
+
+-- Таблица taskcomments
+CREATE TABLE taskcomments (
+    primarykey UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    taskid UUID NOT NULL REFERENCES tasks(primarykey) ON DELETE CASCADE,
+    account UUID NOT NULL REFERENCES accounts(primarykey),
     comment TEXT NOT NULL,
-    createAt TIMESTAMP NOT NULL DEFAULT NOW(),
-    updateAt TIMESTAMP NOT NULL DEFAULT NOW()
+    createdat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updatedat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Таблица task_attachments
-CREATE TABLE taskAttachments (
-    primarykey UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+-- Таблица taskattachments
+CREATE TABLE taskattachments (
+    primarykey UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     task UUID NOT NULL REFERENCES tasks(primarykey) ON DELETE CASCADE,
     file TEXT NOT NULL,
-    uploadedBy UUID NOT NULL REFERENCES accounts(primarykey),
-    uploadetAt TIMESTAMP NOT NULL DEFAULT NOW()
+    uploadedby UUID NOT NULL REFERENCES accounts(primarykey),
+    uploadedtat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Таблица tags
 CREATE TABLE tags (
-    primarykey UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR NOT NULL,
-    color VARCHAR NOT NULL
+    primarykey UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(255) NOT NULL,
+    color VARCHAR(255) NOT NULL
 );
 
--- Таблица task_tags
-CREATE TABLE taskTags (
-    primarykey UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+-- Таблица tasktags
+CREATE TABLE tasktags (
+    primarykey UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     task UUID NOT NULL REFERENCES tasks(primarykey) ON DELETE CASCADE,
-    tag UUID NOT NULL REFERENCES tags(primarykey) ON DELETE CASCADE,
-    UNIQUE(task, tag)
+    tag UUID NOT NULL REFERENCES tags(primarykey) ON DELETE CASCADE
 );
 
--- Таблица user_settings
-CREATE TABLE userSettings (
-    primarykey UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user UUID NOT NULL UNIQUE REFERENCES accounts(primarykey) ON DELETE CASCADE,
-    theme VARCHAR,
-    language VARCHAR,
+-- Уникальный индекс для tasktags
+CREATE UNIQUE INDEX idx_tasktags_task_tag ON tasktags(task, tag);
+
+-- Таблица usersettings
+CREATE TABLE usersettings (
+    primarykey UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    accountid UUID UNIQUE NOT NULL REFERENCES accounts(primarykey) ON DELETE CASCADE,
+    theme VARCHAR(255),
+    language VARCHAR(255),
     isnotifications BOOLEAN NOT NULL DEFAULT TRUE
 );
 
 -- Таблица file
 CREATE TABLE file (
-    primarykey UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    primarykey UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     value TEXT NOT NULL,
-    type VARCHAR,
-    creatAt TIMESTAMP NOT NULL DEFAULT NOW(),
-    updateAt TIMESTAMP NOT NULL DEFAULT NOW()
+    type VARCHAR(255),
+    createdat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updatedat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Таблица chat
 CREATE TABLE chat (
-    primarykey UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    title VARCHAR NOT NULL,
+    primarykey UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    title VARCHAR(255) NOT NULL,
     description TEXT,
     photo TEXT,
-    user UUID NOT NULL REFERENCES accounts(primarykey)
+    account UUID NOT NULL REFERENCES accounts(primarykey)
 );
 
 -- Таблица chat_members
-CREATE TABLE chatMembers (
-    primarykey UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+CREATE TABLE chat_members (
+    primarykey UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     chat UUID NOT NULL REFERENCES chat(primarykey) ON DELETE CASCADE,
-    user UUID NOT NULL REFERENCES accounts(primarykey) ON DELETE CASCADE,
-    UNIQUE(chat, user)
+    account UUID NOT NULL REFERENCES accounts(primarykey) ON DELETE CASCADE
 );
 
+-- Уникальный индекс для chat_members
+CREATE UNIQUE INDEX idx_chat_members_chat_account ON chat_members(chat, account);
+
 -- Таблица chat_messages
-CREATE TABLE chatMessages (
-    primarykey UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+CREATE TABLE chat_messages (
+    primarykey UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     chat UUID NOT NULL REFERENCES chat(primarykey) ON DELETE CASCADE,
-    user UUID NOT NULL REFERENCES accounts(primarykey),
+    account UUID NOT NULL REFERENCES accounts(primarykey),
     content TEXT NOT NULL,
-    isEdited BOOLEAN NOT NULL DEFAULT FALSE,
-    createAt TIMESTAMP NOT NULL DEFAULT NOW(),
-    updateAt TIMESTAMP NOT NULL DEFAULT NOW()
+    isedited BOOLEAN NOT NULL DEFAULT FALSE,
+    createat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updateat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Таблица read_message
-CREATE TABLE readMessage (
-    message UUID NOT NULL REFERENCES chatMessages(primarykey) ON DELETE CASCADE,
-    user UUID NOT NULL REFERENCES accounts(primarykey) ON DELETE CASCADE,
-    isRead BOOLEAN NOT NULL DEFAULT FALSE,
-    PRIMARY KEY (message, user)
+CREATE TABLE read_message (
+    message UUID NOT NULL REFERENCES chat_messages(primarykey) ON DELETE CASCADE,
+    account UUID NOT NULL REFERENCES accounts(primarykey) ON DELETE CASCADE,
+    isread BOOLEAN NOT NULL DEFAULT FALSE,
+    PRIMARY KEY (message, account)
 );
 
 -- Таблица applogs
 CREATE TABLE applogs (
-    primarykey UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    primarykey UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     category TEXT NOT NULL,
     priority INTEGER NOT NULL,
     timestamp TIMESTAMP NOT NULL,
-    machinename VARCHAR NOT NULL,
+    machinename VARCHAR(255) NOT NULL,
     appdomainname TEXT NOT NULL,
-    processId TEXT NOT NULL,
+    processid TEXT NOT NULL,
     message TEXT NOT NULL
 );
 
-drop table accounts;
-drop table role;
+--новое
+
+CREATE TABLE notifications (
+    primarykey UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    account UUID NOT NULL REFERENCES accounts(primarykey) ON DELETE CASCADE,
+    type VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL,
+    isread BOOLEAN NOT NULL DEFAULT FALSE,
+    related_entity UUID, -- Может ссылаться на задачу, проект и т.д.
+    createdat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE activities (
+    primarykey UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    account UUID REFERENCES accounts(primarykey),
+    entity_type VARCHAR(255) NOT NULL,
+    entity_id UUID NOT NULL,
+    action VARCHAR(255) NOT NULL,
+    old_value JSONB,
+    new_value JSONB,
+    createdat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE project_templates (
+    primarykey UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    structure JSONB NOT NULL, -- Может содержать шаблонные задачи, статусы и т.д.
+    createdby UUID REFERENCES accounts(primarykey),
+    createdat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE calendar_events (
+    primarykey UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    start_time TIMESTAMP NOT NULL,
+    end_time TIMESTAMP NOT NULL,
+    is_all_day BOOLEAN NOT NULL DEFAULT FALSE,
+    creator UUID NOT NULL REFERENCES accounts(primarykey),
+    createdat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    location TEXT,
+    recurrence_rule TEXT
+);
+
+CREATE TABLE event_participants (
+    primarykey UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    event UUID NOT NULL REFERENCES calendar_events(primarykey) ON DELETE CASCADE,
+    account UUID NOT NULL REFERENCES accounts(primarykey) ON DELETE CASCADE,
+    status VARCHAR(50) NOT NULL DEFAULT 'pending', -- pending, accepted, declined
+    UNIQUE(event, account)
+);

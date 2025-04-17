@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import Navigation from './components/Navigation';
-import Map from './sreens/Map/Map';
 import News from './sreens/News/News';
 import Calendar from './sreens/Calendar/Calendar';
 import Profile from './sreens/Profile/Profile';
@@ -32,7 +31,6 @@ export default function App() {
               <>
                 <main className="content">
                   <Routes>
-                    <Route path="/" element={<Map />} />
                     <Route path="/news" element={<News />} />
                     <Route path="/calendar" element={<Calendar />} />
                     <Route 

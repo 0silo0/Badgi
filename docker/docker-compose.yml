@@ -1,5 +1,7 @@
 services:
   redis:
+    networks: 
+      - app-network
     container_name: redis
     build:
       context: ../redis
@@ -26,6 +28,8 @@ services:
       - REDIS_URL=redis://redis:6379
     depends_on:
       - redis
+    networks:
+      - app-network
   frontend:
     container_name: frontend
     build:
@@ -50,5 +54,9 @@ services:
       # - /app/node_modules
     environment:
       - PORST=3001
+networks:
+  app-network:
+    driver: bridge
+
 volumes:
   redis_data:
