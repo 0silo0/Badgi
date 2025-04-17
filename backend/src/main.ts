@@ -1,17 +1,18 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { INestApplication } from '@nestjs/common';
 import { PrismaService } from './prisma/prisma.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-    // Добавьте это для Prisma
-    const prismaService = app.get(PrismaService);
-    await prismaService.enableShutdownHooks(app);
+  const prismaService = app.get(PrismaService);
+  await prismaService.enableShutdownHooks(app);
 
-    app.setGlobalPrefix('api');
+  const portStr = process.env.BACKEND_PORT || '4132';
+  const port = parseInt(portStr, 10);
 
-    await app.listen(4132);
+  app.setGlobalPrefix('api');
+
+  await app.listen(port);
 }
 bootstrap();

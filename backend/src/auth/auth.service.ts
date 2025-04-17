@@ -6,14 +6,19 @@ import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { createClient } from 'redis';
+import Redis from 'ioredis';
 
 @Injectable()
 export class AuthService {
+  private readonly redis: Redis;
+
   constructor(
     private jwtService: JwtService,
-    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    @Inject('REDIS_CLIENT') redisClient: Redis,
     private prisma: PrismaService,
-  ) {}
+  ) {
+    this.redis = redisClient;
+  }
 
   async validateUser(email: string, password: string): Promise<any> {
     const user = await this.prisma.account.findUnique({ 
@@ -43,47 +48,34 @@ export class AuthService {
       { sub: userId },
       { expiresIn: '15m' },
     );
-  
     const refreshToken = this.jwtService.sign(
       { sub: userId },
       { expiresIn: '7d' },
     );
-
-
-  
-    console.log('Before saving to Redis - userId:', userId);
-    console.log('Generated tokens:', { accessToken, refreshToken });
-    
     try {
-      // Указываем TTL в миллисекундах
-      await this.cacheManager.set(
+      await this.redis.set(
         `refresh_${userId}`,
         refreshToken,
+        'EX',
         7 * 24 * 60 * 60,
       );
-
-      const stored = await this.cacheManager.get(`refresh_${userId}`);
-      console.log('Stored in Redis:', stored);
-      
-      // Прямая проверка через redis клиент
-      const client = createClient({ url: process.env.REDIS_URL });
-      await client.connect();
-      const keys = await client.keys('*');
-      console.log('All Redis keys:', keys);
-    } catch (error) {
-      console.error('Redis error:', error);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error('Redis error:', error.message);
+      }
+      throw new Error('Failed to save token');
     }
   
     return { accessToken, refreshToken };
   }
 
   async validateRefreshToken(userId: string, token: string) {
-    const storedToken = await this.cacheManager.get(`refresh_${userId}`);
+    const storedToken = await this.redis.get(`refresh_${userId}`);
     return storedToken === token;
   }
 
   async logout(userId: string) {
-    await this.cacheManager.del(`refresh_${userId}`);
+    await this.redis.del(`refresh_${userId}`);
   }
 
   async register(dto: RegisterDto) {
@@ -100,11 +92,5 @@ export class AuthService {
         editAt: new Date(),
       },
     });
-  }
-
-  async getRefreshToken(userId: string) {
-    const refreshToken = this.cacheManager.get(`refresh_${userId}`);
-    console.log('Token - ', refreshToken);
-    return refreshToken;
   }
 }
