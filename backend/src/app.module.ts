@@ -4,11 +4,12 @@ import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { RedisModule } from './redis/redis.module';
-import { CacheModule } from '@nestjs/cache-manager'; 
+import { S3Module } from './s3/s3.module';
+import { FilesController } from './files/files.controller';
 
 @Module({
-  imports: [RedisModule, PrismaModule, AuthModule],
-  controllers: [AppController],
+  imports: [RedisModule, PrismaModule, AuthModule, S3Module],
+  controllers: [AppController, FilesController],
   providers: [AppService],
 })
 export class AppModule {}

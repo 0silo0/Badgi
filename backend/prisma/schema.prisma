@@ -44,6 +44,7 @@ model Account {
   chatMessages      ChatMessage[]
   userSettings      UserSettings? @relation("accountRef")
   ReadMessage ReadMessage[] @relation("accountId")
+  files File[] @relation("userRef")
   
   @@map("accounts") // Указываем, что таблица называется "accounts"
   @@index([email], name: "idx_accounts_email") // Индекс для email
@@ -187,8 +188,11 @@ model File {
   primarykey        String    @id @default(uuid())
   value     String
   type      String
+  userId    String?   @map("userid")
   createdAt DateTime  @default(now()) @map("createdat")
   updatedAt DateTime  @default(now()) @updatedAt @map("updatedat")
+
+  userRef    Account?  @relation("userRef", fields: [userId], references: [primarykey])
 
   @@map("file")
 }

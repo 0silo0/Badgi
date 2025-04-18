@@ -26,6 +26,7 @@ export default function Login({ setIsAuthenticated }: LoginProps) {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({ ...credentials, rememberMe }),
       });
 

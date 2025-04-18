@@ -128,10 +128,11 @@ CREATE TABLE usersettings (
 -- Таблица file
 CREATE TABLE file (
     primarykey UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    value TEXT NOT NULL,
     type VARCHAR(255),
+    userId UUID NULL REFERENCES accounts(primarykey) ON DELETE CASCADE,
     createdat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updatedat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updatedat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    value TEXT NOT NULL
 );
 
 -- Таблица chat
