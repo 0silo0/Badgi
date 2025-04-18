@@ -14,7 +14,10 @@ import Redis, { RedisOptions } from 'ioredis';
           db: config.get<number>('REDIS_DB', 0),
           retryStrategy: (times: number) => {
             const delay = Math.min(times * 50, 2000);
-            console.log(`Redis reconnecting attempt #${times}, delay: ${delay}ms`);
+            console.log(
+              `Redis reconnecting attempt #${times},
+              delay: ${delay}ms`,
+            );
             return delay;
           },
         };

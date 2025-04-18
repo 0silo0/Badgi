@@ -94,7 +94,9 @@ export default function ProfilePage({ setIsAuthenticated }: ProfileProps) {
 
   const handleLogout = async () => {
     try {
-      await logoutUser();
+      if (localStorage.removeItem('token') !== undefined) {
+        await logoutUser();
+      }
 
       localStorage.removeItem('token');
       sessionStorage.removeItem('token');

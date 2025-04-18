@@ -1,8 +1,15 @@
-import { Controller, Post, Body, HttpCode, UnauthorizedException, UseInterceptors, Get } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  HttpCode,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
-import { CacheInterceptor, CacheKey } from '@nestjs/cache-manager';
+import { Public } from 'src/common/decorators/public.decorator';
 
+@Public()
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -15,22 +22,27 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(200)
-  async login(@Body() body: { email: string; password: string }) {
-    const user = await this.authService.validateUser(body.email, body.password);
+  async login(
+    @Body() body: { login: string; password: string; rememberMe?: boolean },
+  ) {
+    const user = await this.authService.validateUser(body.login, body.password);
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException(
+        'Неверные данные для входа, логин или пароль.',
+      );
     }
-    return this.authService.generateTokens(user.primarykey);
+
+    return this.authService.generateTokens(user, !!body.rememberMe);
   }
 
-  @Post('refresh')
-  @HttpCode(200)
-  async refresh(@Body('userId') userId: string, @Body('token') token: string) {
-    if (await this.authService.validateRefreshToken(userId, token)) {
-      return this.authService.generateTokens(userId);
-    }
-    throw new UnauthorizedException('Invalid refresh token');
-  }
+  // @Post('refresh')
+  // @HttpCode(200)
+  // async refresh(@Body('userId') userId: string, @Body('token') token: string) {
+  //   if (await this.authService.validateRefreshToken(userId, token)) {
+  //     return this.authService.generateTokens(userId);
+  //   }
+  //   throw new UnauthorizedException('Invalid refresh token');
+  // }
 
   @Post('logout')
   @HttpCode(200)
