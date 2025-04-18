@@ -1,30 +1,23 @@
-# Stage 1: Build
-FROM node:20.18.0-alpine AS builder
-WORKDIR /usr/src/app
+# Этап сборки
+FROM node:20-alpine as builder
 
-RUN apk add --no-cache openssl
-
+WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+COPY prisma ./prisma/
 
-COPY . .
+RUN apk add --no-cache openssl python3 make g++
+RUN npm ci
+RUN npm install -g @nestjs/cli
 RUN npx prisma generate
+COPY . .
 RUN npm run build
 
-# Удаляем ненужные зависимости (devDependencies)
-RUN npm prune --production
+# Финальный образ
+FROM node:20-alpine
 
-# Stage 2: Production
-FROM node:20.18.0-alpine
-WORKDIR /usr/src/app
+WORKDIR /app
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/dist ./dist
 
-RUN apk add --no-cache openssl
-
-COPY --from=builder /usr/src/app/node_modules ./node_modules
-COPY --from=builder /usr/src/app/dist ./dist
-COPY --from=builder /usr/src/app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /usr/src/app/package*.json ./
-COPY --from=builder /usr/src/app/prisma ./prisma
-COPY .env ./
-
-CMD ["npm", "start"]
+CMD ["node", "dist/main"]

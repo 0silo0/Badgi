@@ -26,7 +26,7 @@ export default function Login({ setIsAuthenticated }: LoginProps) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(credentials),
+        body: JSON.stringify({ ...credentials, rememberMe }),
       });
 
       if (!response.ok) {
@@ -37,9 +37,9 @@ export default function Login({ setIsAuthenticated }: LoginProps) {
       const data = await response.json();
 
       if (rememberMe) {
-        localStorage.setItem('token', data.token); // Для длительного хранения
+        localStorage.setItem('token', data.accessToken);
       } else {
-        sessionStorage.setItem('token', data.token); // Для текущей сессии
+        sessionStorage.setItem('token', data.accessToken);
       }
 
       setIsAuthenticated(true);
