@@ -4,10 +4,12 @@ import {
   Body,
   HttpCode,
   UnauthorizedException,
+  Res,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { Public } from 'src/common/decorators/public.decorator';
+import { Response } from 'express';
 
 @Public()
 @Controller('auth')
@@ -24,6 +26,7 @@ export class AuthController {
   @HttpCode(200)
   async login(
     @Body() body: { login: string; password: string; rememberMe?: boolean },
+    @Res() res: Response,
   ) {
     const user = await this.authService.validateUser(body.login, body.password);
     if (!user) {
@@ -32,7 +35,20 @@ export class AuthController {
       );
     }
 
-    return this.authService.generateTokens(user, !!body.rememberMe);
+    const tokens = await this.authService.generateTokens(
+      user,
+      !!body.rememberMe,
+    );
+
+    res.cookie('refreshToken', tokens.refreshToken, {
+      httpOnly: true,           // Only server has access to the cookie
+      secure: process.env.NODE_ENV === 'production', // Secure in production mode
+      sameSite: 'lax',          // Prevent cross-site attacks
+      path: '/',                // Available at all paths
+      maxAge: 7 * 24 * 60 * 60 * 1000, // Expire after 7 days
+    });
+
+    return res.send({ accessToken: tokens.accessToken });
   }
 
   // @Post('refresh')

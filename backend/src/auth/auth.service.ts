@@ -57,7 +57,7 @@ export class AuthService {
         throw new Error('Failed to save token');
       }
 
-      return { accessToken };
+      return { accessToken, refreshToken };
     } else {
       const accessToken = this.jwtService.sign(
         { sub: userId },

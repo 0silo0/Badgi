@@ -2,53 +2,132 @@
 import {
   CanActivate,
   ExecutionContext,
+  Inject,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+import Redis from 'ioredis';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
+  private readonly redis: Redis;
   constructor(
     private jwtService: JwtService,
-    private reflector: Reflector, // Для проверки @Public()
-  ) {}
+    private reflector: Reflector,
+    @Inject('REDIS_CLIENT') redisClient: Redis,
+  ) {
+    this.redis = redisClient;
+  }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    // Проверяем есть ли @Public() декоратор
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
     ]);
 
     if (isPublic) {
-      return true; // Пропускаем проверку
+      return true;
     }
 
     const request = context.switchToHttp().getRequest();
-    const token = this.extractToken(request);
-
-    if (!token) {
-      throw new UnauthorizedException('Токен не предоставлен');
-    }
-
+    const response = context.switchToHttp().getResponse();
+    
     try {
-      const payload = await this.jwtService.verifyAsync(token, {
-        secret: process.env.JWT_SECRET,
-      });
+      const accessToken = this.extractToken(request);
+      if (!accessToken) {
+        throw new UnauthorizedException('Token not found');
+      }
+      const payload = await this.verifyToken(accessToken);
+      request.user = payload;
+      return true;
+    } catch (error) {
+      if (error instanceof Error && error.name === 'TokenExpiredError') {
+        return this.handleExpiredToken(request, response);
+      }
+      throw new UnauthorizedException('Invalid authentication credentials');
+    }
+  }
 
-      request.user = payload; // Добавляем в запрос
-    } catch {
-      throw new UnauthorizedException('Невалидный токен');
+  private async verifyToken(token: string) {
+    return this.jwtService.verifyAsync(token, {
+      secret: process.env.JWT_SECRET,
+    });
+  }
+
+  private async handleExpiredToken(request: Request, response: Response) {
+    const refreshToken = this.extractRefreshToken(request);
+    
+    if (!refreshToken) {
+      throw new UnauthorizedException('Refresh token not provided');
     }
 
-    return true;
+    let userId: string = '';
+    try {
+      const payload = await this.jwtService.verifyAsync(refreshToken, {
+        secret: process.env.JWT_REFRESH_SECRET,
+      });
+      userId = payload.sub;
+
+      const storedRefreshToken = await this.redis.get(`refresh_${userId}`);
+      
+      if (refreshToken !== storedRefreshToken) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      const newTokens = await this.generateNewTokens(userId);
+      this.attachTokensToResponse(response, newTokens);
+      
+      request.headers.authorization = `Bearer ${newTokens.accessToken}`;
+      return true;
+    } catch (error) {
+      if (userId === '') {
+        await this.redis.del(`refresh_${userId}`);
+      }
+      throw new UnauthorizedException('Session expired. Please login again');
+    }
+  }
+
+  private async generateNewTokens(userId: string) {
+    const accessToken = await this.jwtService.signAsync(
+      { sub: userId },
+      { expiresIn: '15m', secret: process.env.JWT_SECRET },
+    );
+
+    const refreshToken = await this.jwtService.signAsync(
+      { sub: userId },
+      { expiresIn: '7d', secret: process.env.JWT_REFRESH_SECRET },
+    );
+
+    await this.redis.set(`refresh_${userId}`, refreshToken, 'EX', 604800);
+
+    return { accessToken, refreshToken };
   }
 
   private extractToken(req: Request): string | undefined {
-    return req.headers.authorization?.split(' ')[1]; // Bearer <token>
+    const [type, token] = req.headers.authorization?.split(' ') ?? [];
+    return type === 'Bearer' ? token : undefined;
+  }
+
+  private extractRefreshToken(req: Request): string {
+    return (
+      req.cookies?.refreshToken || req.headers['x-refresh-token']?.toString()
+    );
+  }
+
+  private attachTokensToResponse(
+    res: Response,
+    tokens: { accessToken: string; refreshToken: string },
+  ) {
+    const expressRes = res as unknown as Response;
+    expressRes.setHeader('Authorization', `Bearer ${tokens.accessToken}`);
+    expressRes.cookie('refreshToken', tokens.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 604800000,
+    });
   }
 }

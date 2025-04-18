@@ -26,7 +26,11 @@ async function bootstrap() {
   await prismaService.enableShutdownHooks(app);
 
   app.useGlobalGuards(
-    new JwtAuthGuard(app.get(JwtService), app.get(Reflector)),
+    new JwtAuthGuard(
+      app.get(JwtService),
+      app.get(Reflector),
+      app.get('REDIS_CLIENT'),
+    ),
   );
 
   const portStr = process.env.BACKEND_PORT || '4132';
