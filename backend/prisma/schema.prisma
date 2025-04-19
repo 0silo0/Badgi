@@ -20,6 +20,7 @@ model Account {
   primarykey String    @id @default(uuid()) @map("primarykey") // UUID как primary key
   login      String    @unique
   email      String    @unique
+  isEmailVerified Boolean @default(false) @map("isemailverified")
   password   String
   firstName  String    @map("firstname")
   lastName   String    @map("lastname")
@@ -49,11 +50,14 @@ model Account {
   @@map("accounts") // Указываем, что таблица называется "accounts"
   @@index([email], name: "idx_accounts_email") // Индекс для email
   @@index([login], name: "idx_accounts_login") // Индекс для login
+  accountId ProjectMember[] @relation("accountId")
+  assignedById ProjectMember[] @relation("assignedById")
 }
 
 model Role {
   primarykey String    @id @default(uuid()) @map("primarykey") // UUID как primary key
   name String
+  level     Int       @default(0)
   createAt DateTime  @default(now()) @map("createat")
   editAt   DateTime  @default(now()) @updatedAt @map("editat")
 
@@ -61,6 +65,34 @@ model Role {
   creator Account[]    @relation("accountCreator")
 
   @@map("roles")
+}
+
+model ProjectRole {
+  primarykey String @id @default(uuid())
+  name       String // "PROJECT_ADMIN", "CONTRIBUTOR", "REVIEWER" и т.д.
+  level      Int    @default(0)
+  createAt DateTime  @default(now()) @map("createat")
+  editAt   DateTime  @default(now()) @updatedAt @map("editat")
+  
+  members    ProjectMember[]
+  
+  @@map("projectroles")
+}
+
+model ProjectMember {
+  primarykey    String @id @default(uuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [primarykey])
+  accountId String
+  account   Account @relation("accountId", fields: [accountId], references: [primarykey])
+  roleId    String
+  role      ProjectRole @relation(fields: [roleId], references: [primarykey])
+  assignedAt    DateTime @default(now()) @map("assignedat")
+  assignedById  String?  // Кто назначил
+  assignedBy    Account? @relation("assignedById", fields: [assignedById], references: [primarykey])
+  
+  @@unique([projectId, accountId])
+  @@map("projectmembers")
 }
 
 model Team {
@@ -103,6 +135,7 @@ model Project {
   tasks       Task[]
 
   @@map("projects")
+  ProjectMember ProjectMember[]
 }
 
 model Task {

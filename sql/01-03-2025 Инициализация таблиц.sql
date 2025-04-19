@@ -4,6 +4,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE roles (
     primarykey UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
+    level INTEGER,
     createat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     editat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -13,6 +14,7 @@ CREATE TABLE accounts (
     primarykey UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     login VARCHAR(255) UNIQUE NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
+    isEmailVerified BOOLEAN DEFAULT FALSE,
     password TEXT NOT NULL,
     firstname VARCHAR(255),
     lastname VARCHAR(255),

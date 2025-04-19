@@ -11,13 +11,18 @@ import {
     NotFoundException,
     BadRequestException,
     Body,
+    UseGuards,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { S3Service } from '../s3/s3.service';
 import { Public } from 'src/common/decorators/public.decorator';
 import { Response } from 'express';
+import { RolesGuard } from 'src/common/guards/roles.guard';
+import { Roles } from 'src/common/decorators/roles.decorator';
+import { SystemRole } from 'src/roles/role.enum';
 
 @Public()
+@UseGuards(RolesGuard)
 @Controller('files')
 export class FilesController {
   constructor(private readonly s3Service: S3Service) {}
@@ -25,6 +30,7 @@ export class FilesController {
   private readonly allowedSubfolders = ['avatars', 'documents', 'images'];
 
   @Post('upload/:subfolder')
+  @Roles(SystemRole.SYSTEM_ADMIN, SystemRole.USER)
   @UseInterceptors(FileInterceptor('file'))
   async uploadFile(
     @UploadedFile() file: Express.Multer.File,
@@ -50,7 +56,7 @@ export class FilesController {
   @Get(':key')
   async getFile(
     @Param('key') key: string,
-    @Res({ passthrough: true }) res: Response
+    @Res({ passthrough: true }) res: Response,
   ) {
     if (!(await this.s3Service.fileExists(key))) {
       throw new NotFoundException('File not found');
