@@ -1,12 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
-import Navigation from './components/Navigation';
-import News from './sreens/News/News';
-import Calendar from './sreens/Calendar/Calendar';
-import Profile from './sreens/Profile/Profile';
-import Login from './sreens/Auth/Login';
-import Register from './sreens/Auth/Register';
-import FAQ from './sreens/FAQ/FAQ';
+import Login from './sreens/Auth/Login/Login';
+import NewName from './sreens/Auth/Register/newName/newName';
+import NewPassword from './sreens/Auth/Register/newPassword/newPassword';
+import NewEmail from './sreens/Auth/Register/newEmail/newEmail';
+import NewEmailConfirm from './sreens/Auth/Register/newEmailConfirm/newEmailConfirm';
+import HomePage from './sreens/HomePage/HomePage';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(
@@ -17,48 +16,20 @@ export default function App() {
     <Router>
       <div className="app-container">
         <Routes>
-          <Route path="/login" element={
-            isAuthenticated ? <Navigate to="/" /> : 
-              <Login setIsAuthenticated={setIsAuthenticated} />
-          } />
-          <Route path="/register" element={
-            isAuthenticated ? <Navigate to="/" /> : <Register />
-          } />
-          
-          {/* Основные маршруты с навигацией */}
-          <Route path="/*" element={
-            isAuthenticated ? (
-              <>
-                <main className="content">
-                  <Routes>
-                    <Route path="/news" element={<News />} />
-                    <Route path="/calendar" element={<Calendar />} />
-                    <Route 
-                      path="/profile" 
-                      element={<Profile setIsAuthenticated={setIsAuthenticated} />} 
-                    />
-                    <Route path="*" element={<Navigate to="/" />} />
-                  </Routes>
-                </main>
-                <Navigation />
-              </>
-            ) : (
-              <Navigate to="/login" />
-            )
-          } />
-
-          <Route 
-            path="/faq" 
+          <Route path="/" element={isAuthenticated ? <HomePage /> : <Navigate to="/login" />} />
+          <Route
+            path="/login"
             element={
-              isAuthenticated ? (
-                <main className="content">
-                  <FAQ />
-                </main>
-              ) : (
-                <Navigate to="/login" />
-              )
-            } 
+              isAuthenticated ? <Navigate to="/" /> : <Login setIsAuthenticated={setIsAuthenticated} />
+            }
           />
+          <Route path="/register">
+            <Route index element={<Navigate to="name" />} />
+            <Route path="name" element={<NewName />} />
+            <Route path="password" element={<NewPassword />} />
+            <Route path="email" element={<NewEmail />} />
+            <Route path="confirm" element={<NewEmailConfirm />} />
+          </Route>
         </Routes>
       </div>
     </Router>
