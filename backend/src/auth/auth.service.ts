@@ -1,25 +1,88 @@
-import { Inject, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  Logger,
+  RequestTimeoutException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Cache } from 'cache-manager';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import Redis from 'ioredis';
-import { userInfo } from 'os';
+import { MailService } from 'src/mail/mail.service';
+import { SystemRole } from 'src/roles/role.enum';
+import { VerifyCodeDto, SendCodeDto } from './dto/send-code.dto';
 
 @Injectable()
 export class AuthService {
   private readonly redis: Redis;
+  private readonly logger = new Logger(MailService.name);
 
   constructor(
     private jwtService: JwtService,
     @Inject('REDIS_CLIENT') redisClient: Redis,
     private prisma: PrismaService,
+    private mailService: MailService,
   ) {
     this.redis = redisClient;
   }
 
-  async validateUser(login: string, password: string): Promise<string | null> {
+  async sendConfirmationCode(dto: SendCodeDto) {
+    const rateLimit = await this.redis.get(`confirm_rate_limit:${dto.email}`);
+    if (rateLimit) {
+      throw new RequestTimeoutException(
+        'Повторная отправка кода возможна через 1 минуту',
+      );
+    }
+
+    const existingUser = await this.prisma.account.findUnique({
+      where: { email: dto.email },
+    });
+
+    if (existingUser) {
+      throw new ConflictException('Email уже зарегистрирован');
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+    const pipeline = this.redis.pipeline();
+    pipeline.set(`confirm:${dto.email}`, code, 'EX', 900);
+    pipeline.set(`confirm_rate_limit:${dto.email}`, '1', 'EX', 5);
+    await pipeline.exec();
+
+    await this.mailService.sendMail({
+      to: dto.email,
+      subject: 'Код подтверждения',
+      html: `Ваш код подтверждения: <b>${code}</b> (действителен 15 минут)`,
+    });
+  }
+
+  async verifyConfirmationCode(dto: VerifyCodeDto) {
+    const attempts = await this.redis.get(`confirm_attempts:${dto.email}`);
+    if (attempts && parseInt(attempts) >= 5) {
+      throw new UnauthorizedException(
+        'Слишком много попыток. Попробуйте позже.',
+      );
+    }
+
+    const storedCode = await this.redis.get(`confirm:${dto.email}`);
+    if (!storedCode || storedCode !== dto.code) {
+      await this.redis.incr(`confirm_attempts:${dto.email}`);
+      await this.redis.expire(`confirm_attempts:${dto.email}`, 3600);
+      return false;
+    }
+
+    await this.redis.del([
+      `confirm:${dto.email}`,
+      `confirm_attempts:${dto.email}`,
+    ]);
+    return true;
+  }
+
+  async loginVerify(login: string, password: string): Promise<string | null> {
     const user = await this.prisma.account.findUnique({
       where: { login },
     });
@@ -79,18 +142,44 @@ export class AuthService {
   }
 
   async register(dto: RegisterDto) {
-    const hashedPassword = await bcrypt.hash(dto.password, 10);
-
-    return this.prisma.account.create({
-      data: {
-        email: dto.email,
-        password: hashedPassword,
-        login: dto.login,
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        createAt: new Date(),
-        editAt: new Date(),
+    const existingUser = await this.prisma.account.findFirst({
+      where: {
+        OR: [{ email: dto.email }, { login: dto.login }],
       },
     });
+    if (existingUser) {
+      throw new ConflictException(
+        'Пользователь с таким email или логином уже существует',
+      );
+    }
+
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
+    const role = await this.prisma.role.findFirst({
+      where: { name: SystemRole.USER },
+    });
+
+    if (!role) {
+      throw new Error('Роль для пользователя не найдена');
+    }
+
+    const user = await this.prisma.account.create({
+      data: {
+        email: dto.email,
+        login: dto.login,
+        password: hashedPassword,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        isEmailVerified: true,
+        roleRef: { connect: { primarykey: role.primarykey } },
+      },
+    });
+
+    await this.mailService.sendMail({
+      to: dto.email,
+      subject: 'Добро пожаловать!',
+      text: `Вы успешно зарегистрировались. Ваш логин: ${dto.login}`,
+    });
+
+    return user;
   }
 }

@@ -10,8 +10,8 @@ BEGIN
         VALUES (gen_random_uuid(), 'GUEST', 20, NOW(), NOW());
     END IF;
     
-    IF NOT EXISTS (SELECT 1 FROM roles WHERE name = 'CLIENT') THEN
+    IF NOT EXISTS (SELECT 1 FROM roles WHERE name = 'USER') THEN
         INSERT INTO roles (primarykey, name, level, createat, editat)
-        VALUES (gen_random_uuid(), 'CLIENT', 10, NOW(), NOW());
+        VALUES (gen_random_uuid(), 'USER', 10, NOW(), NOW());
     END IF;
 END $$;

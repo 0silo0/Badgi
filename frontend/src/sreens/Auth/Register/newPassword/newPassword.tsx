@@ -7,26 +7,25 @@ export default function NewPassword() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [passwords, setPasswords] = useState(() => {
+  const [password, setPassword] = useState(() => {
     const savedData = localStorage.getItem('registrationData');
-    return savedData 
-      ? JSON.parse(savedData).passwords || { password: '', confirm: '' }
-      : { password: '', confirm: '' };
+    return savedData ? JSON.parse(savedData).password || '' : '';
   });
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
     const savedData = localStorage.getItem('registrationData');
     const data = savedData ? JSON.parse(savedData) : {};
-    localStorage.setItem('registrationData', JSON.stringify({...data, passwords}));
-  }, [passwords]);
+    localStorage.setItem('registrationData', JSON.stringify({...data, password}));
+  }, [password]);
 
   const handleNext = () => {
-    if (!passwords.password || !passwords.confirm) {
+    if (!password || !confirmPassword) {
       setError('Все поля обязательны для заполнения');
       return;
     }
-    if (passwords.password !== passwords.confirm) {
+    if (password !== confirmPassword) {
       setError('Пароли не совпадают');
       return;
     }
@@ -50,9 +49,9 @@ export default function NewPassword() {
               <div className="input-wrapper">
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  value={passwords.password}
+                  value={password}
                   onChange={(e) => {
-                    setPasswords({...passwords, password: e.target.value});
+                    setPassword(e.target.value);
                     setError('');
                   }}
                   autoComplete="new-password"
@@ -71,9 +70,9 @@ export default function NewPassword() {
               <div className="input-wrapper">
                 <input
                   type={showConfirmPassword ? 'text' : 'password'}
-                  value={passwords.confirm}
+                  value={confirmPassword}
                   onChange={(e) => {
-                    setPasswords({...passwords, confirm: e.target.value});
+                    setConfirmPassword(e.target.value);
                     setError('');
                   }}
                   autoComplete="new-password"
@@ -102,7 +101,7 @@ export default function NewPassword() {
             <button 
               className="btn next"
               onClick={handleNext}
-              disabled={!passwords.password || !passwords.confirm}
+              disabled={!password || !confirmPassword}
             >
               Далее
             </button>

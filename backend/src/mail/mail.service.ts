@@ -30,7 +30,11 @@ export class MailService {
       await this.transporter.verify();
       this.logger.log('Connected to email server');
     } catch (error) {
-      this.logger.error('Unable to connect to email server:', error);
+      this.logger.error('SMTP Connection Error:', {
+        message: error.message,
+        stack: error.stack,
+        response: error.response,
+      });
       throw error;
     }
   }
@@ -42,7 +46,7 @@ export class MailService {
     html?: string;
   }): Promise<boolean> {
     const mailOptions = {
-      from: `"Your App Name" <${this.configService.get<string>('EMAIL_USER')}>`,
+      from: this.configService.get<string>('EMAIL_USER'),
       ...options,
     };
 
@@ -51,14 +55,21 @@ export class MailService {
       this.logger.log(`Email sent to ${options.to}`);
       return true;
     } catch (error) {
-      this.logger.error(`Error sending email to ${options.to}:`, error);
+      this.logger.error('SMTP Error Details:', {
+        error: error.message,
+        stack: error.stack,
+        response: error.response,
+        code: error.code,
+        smtpCommand: error.command // Покажет на каком этапе ошибка
+      });
       return false;
     }
   }
 
+  // Пока не используется нигде
   async sendVerificationEmail(email: string, token: string): Promise<boolean> {
     const verificationUrl = `${this.configService.get('APP_URL')}/verify-email?token=${token}`;
-    
+
     return this.sendMail({
       to: email,
       subject: 'Verify Your Email Address',
@@ -71,9 +82,10 @@ export class MailService {
     });
   }
 
+  // Пока не используется нигде
   async sendPasswordResetEmail(email: string, token: string): Promise<boolean> {
     const resetUrl = `${this.configService.get('APP_URL')}/reset-password?token=${token}`;
-    
+
     return this.sendMail({
       to: email,
       subject: 'Password Reset Request',

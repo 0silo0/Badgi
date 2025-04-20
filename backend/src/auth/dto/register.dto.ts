@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsString, Length, MinLength } from 'class-validator';
 
 export class RegisterDto {
   @IsEmail()
@@ -16,4 +16,8 @@ export class RegisterDto {
 
   @IsString()
   lastName: string;
+
+  @IsString()
+  @Length(6, 6)
+  code: string; // Это поле только для DTO, в БД не сохраняется
 }

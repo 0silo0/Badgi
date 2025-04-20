@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaTimes } from 'react-icons/fa';
+import apiClient from '../../../../api/client';
+import { isAxiosError } from 'axios';
 import './newEmail.scss';
 
 export default function NewEmail() {
@@ -10,6 +12,7 @@ export default function NewEmail() {
     return savedData ? JSON.parse(savedData).email || '' : '';
   });
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const savedData = localStorage.getItem('registrationData');
@@ -19,10 +22,10 @@ export default function NewEmail() {
 
   const validateEmail = (email: string) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(email);
+    return re.test(email.trim());
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (!email) {
       setError('Поле email обязательно для заполнения');
       return;
@@ -31,7 +34,19 @@ export default function NewEmail() {
       setError('Введите корректный email');
       return;
     }
-    navigate('../confirm');
+    setIsLoading(true);
+    try {
+      await apiClient.post('/auth/send-confirmation-code', { email });
+      navigate('../confirm');
+    } catch (err) {
+      if (isAxiosError(err)) {
+        setError(err.response?.data?.message || 'Ошибка при отправке кода');
+      } else {
+        setError('Произошла неизвестная ошибка');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -76,9 +91,9 @@ export default function NewEmail() {
             <button 
               className="btn next"
               onClick={handleNext}
-              disabled={!email || !!error}
+              disabled={!email || !!error || isLoading}
             >
-              Далее
+              {isLoading ? 'Отправка...' : 'Отправить код'}
             </button>
           </div>
 
