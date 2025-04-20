@@ -60,7 +60,7 @@ export class MailService {
         stack: error.stack,
         response: error.response,
         code: error.code,
-        smtpCommand: error.command // Покажет на каком этапе ошибка
+        smtpCommand: error.command, // Покажет на каком этапе ошибка
       });
       return false;
     }

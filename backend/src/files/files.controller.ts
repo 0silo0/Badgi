@@ -1,17 +1,17 @@
-import { 
-    Controller,
-    Post,
-    Get,
-    Delete,
-    UploadedFile,
-    UseInterceptors,
-    Param,
-    Res,
-    StreamableFile,
-    NotFoundException,
-    BadRequestException,
-    Body,
-    UseGuards,
+import {
+  Controller,
+  Post,
+  Get,
+  Delete,
+  UploadedFile,
+  UseInterceptors,
+  Param,
+  Res,
+  StreamableFile,
+  NotFoundException,
+  BadRequestException,
+  Body,
+  UseGuards,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { S3Service } from '../s3/s3.service';

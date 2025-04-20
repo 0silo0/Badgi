@@ -35,7 +35,7 @@ export class JwtAuthGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest();
     const response = context.switchToHttp().getResponse();
-    
+
     try {
       const accessToken = this.extractToken(request);
       if (!accessToken) {
@@ -60,7 +60,7 @@ export class JwtAuthGuard implements CanActivate {
 
   private async handleExpiredToken(request: Request, response: Response) {
     const refreshToken = this.extractRefreshToken(request);
-    
+
     if (!refreshToken) {
       throw new UnauthorizedException('Refresh token not provided');
     }
@@ -73,14 +73,14 @@ export class JwtAuthGuard implements CanActivate {
       userId = payload.sub;
 
       const storedRefreshToken = await this.redis.get(`refresh_${userId}`);
-      
+
       if (refreshToken !== storedRefreshToken) {
         throw new UnauthorizedException('Invalid refresh token');
       }
 
       const newTokens = await this.generateNewTokens(userId);
       this.attachTokensToResponse(response, newTokens);
-      
+
       request.headers.authorization = `Bearer ${newTokens.accessToken}`;
       return true;
     } catch (error) {

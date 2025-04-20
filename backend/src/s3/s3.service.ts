@@ -74,8 +74,8 @@ export class S3Service {
       data: {
         value: url, // Сохраняем подписанный URL
         type: fileType || file.mimetype,
-        userId: userId // Привязываем к пользователю
-      }
+        userId: userId, // Привязываем к пользователю
+      },
     });
 
     return {
@@ -88,7 +88,7 @@ export class S3Service {
     file: Express.Multer.File,
     subfolder: string,
     accountId?: string,
-    fileType?: string,
+    _fileType?: string,
   ): Promise<{ url: string; key: string }> {
     console.log(`Uploading file to badgi/${subfolder}`);
     const uniqueFileName = this.generateUniqueFileName(file.originalname);
@@ -167,7 +167,7 @@ export class S3Service {
         new HeadObjectCommand({
           Bucket: this.bucketName,
           Key: key,
-        })
+        }),
       );
       return true;
     } catch (error) {

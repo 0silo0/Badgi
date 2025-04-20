@@ -9,6 +9,13 @@ import { SystemRole } from '../../roles/role.enum';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 
+interface AuthenticatedRequest extends Request {
+  user?: {
+    userId: string; // Явно указываем тип
+    // Другие возможные поля пользователя
+  };
+}
+
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(
@@ -23,7 +30,7 @@ export class RolesGuard implements CanActivate {
     );
     if (!requiredRoles) return true;
 
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const userId = request.user?.userId; // Изменено: убрали .sub
 
     if (!userId) {
