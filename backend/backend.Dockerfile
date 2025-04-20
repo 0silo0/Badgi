@@ -1,7 +1,7 @@
 # Этап сборки
 FROM node:20-alpine as builder
 
-WORKDIR /app
+WORKDIR /usr/src/app/badgi
 COPY package*.json ./
 COPY prisma ./prisma/
 
@@ -15,10 +15,15 @@ RUN npm run build
 # Финальный образ
 FROM node:20-alpine
 
-WORKDIR /app
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/dist ./dist
+WORKDIR /usr/src/app/badgi
+
+RUN apk add --no-cache openssl
+
+COPY --from=builder /usr/src/app/badgi/node_modules ./node_modules
+COPY --from=builder /usr/src/app/badgi/dist ./dist
+COPY --from=builder /usr/src/app/badgi/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /usr/src/app/badgi/package*.json ./
+COPY --from=builder /usr/src/app/badgi/prisma ./prisma
 COPY .env ./
 
 CMD ["node", "dist/main"]
