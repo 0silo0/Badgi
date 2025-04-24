@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../context/AuthContext';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import './Login.scss';
 
-export default function Login({ setIsAuthenticated }: { setIsAuthenticated: (value: boolean) => void }) {
+export default function Login() {
   const [credentials, setCredentials] = useState({ login: '', password: '', remember: false });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleLogin = () => {
     if (!credentials.login || !credentials.password) {
@@ -20,7 +22,8 @@ export default function Login({ setIsAuthenticated }: { setIsAuthenticated: (val
     } else {
       sessionStorage.setItem('token', 'dummy-token');
     }
-    setIsAuthenticated(true);
+    
+    login(); 
     navigate('/');
   };
 

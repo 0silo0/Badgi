@@ -1,35 +1,56 @@
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import { 
+  FiHome, 
+  FiUser, 
+  FiSettings, 
+  FiBell, 
+  FiFileText, 
+  FiCalendar,
+  FiMessageSquare,
+  FiBox
+} from 'react-icons/fi';
+import { TbLogout2 } from "react-icons/tb";
 import './Sidebar.scss';
 
 export default function Sidebar() {
+  const { logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   const handleLogout = () => {
-    // Очистка токенов
-    localStorage.removeItem('token');
-    sessionStorage.removeItem('token');
-    
-    // Принудительный переход
+    logout();
     navigate('/login', { replace: true });
-    window.location.reload(); // Добавьте, если переход не работает
   };
+
+  const navItems = [
+    { path: '/', icon: <FiHome /> },
+    { path: '/profile', icon: <FiUser /> },
+    { path: '/settings', icon: <FiSettings /> },
+    { path: '/notifications', icon: <FiBell /> },
+    { path: '/documents', icon: <FiFileText /> },
+    { path: '/calendar', icon: <FiCalendar /> },
+    { path: '/messages', icon: <FiMessageSquare /> },
+    { path: '/projects', icon: <FiBox /> },
+  ];
 
   return (
     <div className="sidebar">
       <div className="nav-buttons">
-        <button 
-          className={`nav-button ${location.pathname === '/' ? 'active' : ''}`}
-          onClick={() => navigate('/')}
-        >
-          HomePage
-        </button>
-        
+        {navItems.map((item, index) => (
+          <button
+            key={index}
+            className={`nav-button ${location.pathname === item.path ? 'active' : ''}`}
+            onClick={() => navigate(item.path)}
+          >
+            {item.icon}
+          </button>
+        ))}
         <button 
           className="nav-button logout"
           onClick={handleLogout}
         >
-          Выход
+          <TbLogout2 />
         </button>
       </div>
     </div>
