@@ -1,12 +1,70 @@
 import React from 'react';
+import { 
+  FiBell,
+  FiSettings,
+  FiUsers,
+  FiPackage,
+  FiBarChart2,
+  FiHelpCircle
+} from 'react-icons/fi';
 import './Header.scss';
 
 export default function Header() {
+  const handleAction = (actionName: string) => () => {
+    console.log(`${actionName} clicked`);
+  };
+
   return (
     <header className="header">
-      {/* Ваш код заголовка */}
+      <button 
+        className="nav-item" 
+        onClick={handleAction('Уведомления')}
+      >
+        <FiBell className="icon" />
+        <span className="label">Уведомления</span>
+      </button>
+      
+      <button 
+        className="nav-item" 
+        onClick={handleAction('Команда')}
+      >
+        <FiUsers className="icon" />
+        <span className="label">Команда</span>
+      </button>
+      
+      <button 
+        className="nav-item" 
+        onClick={handleAction('Продукты')}
+      >
+        <FiPackage className="icon" />
+        <span className="label">Продукты</span>
+      </button>
+      
+      <button 
+        className="nav-item" 
+        onClick={handleAction('Аналитика')}
+      >
+        <FiBarChart2 className="icon" />
+        <span className="label">Аналитика</span>
+      </button>
+      
+      <button 
+        className="nav-item" 
+        onClick={handleAction('Настройки')}
+      >
+        <FiSettings className="icon" />
+        <span className="label">Настройки</span>
+      </button>
+      
+      <button 
+        className="nav-item" 
+        onClick={handleAction('Поддержка')}
+      >
+        <FiHelpCircle className="icon" />
+        <span className="label">Поддержка</span>
+      </button>
+      
+      <div className="avatar" />
     </header>
   );
 }
-
-export {};
