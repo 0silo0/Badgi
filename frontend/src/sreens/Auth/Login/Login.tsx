@@ -5,26 +5,32 @@ import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import './Login.scss';
 
 export default function Login() {
-  const [credentials, setCredentials] = useState({ login: '', password: '', remember: false });
+  const [credentials, setCredentials] = useState({ 
+    loginOrEmail: '', 
+    password: '', 
+    remember: false 
+  });
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
+  const { login, authError, setAuthError } = useAuth();
   const navigate = useNavigate();
-  const { login } = useAuth();
 
-  const handleLogin = () => {
-    if (!credentials.login || !credentials.password) {
-      setError('Все поля обязательны для заполнения');
+  const handleLogin = async () => {
+    if (!credentials.loginOrEmail || !credentials.password) {
+      setAuthError('Все поля обязательны для заполнения');
       return;
     }
     
-    if (credentials.remember) {
-      localStorage.setItem('token', 'dummy-token');
-    } else {
-      sessionStorage.setItem('token', 'dummy-token');
+    try {
+      await login(credentials);
+    } catch {
+      // Ошибка уже обработана в AuthContext
     }
-    
-    login(); 
-    navigate('/');
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleLogin();
+    }
   };
 
   return (
@@ -37,20 +43,24 @@ export default function Login() {
         <div className="form-section">
           <h2>Вход в систему</h2>
 
-          <div className={`error-message ${error ? 'visible' : ''}`}>
-            {error}
-          </div>
+          {authError && (
+            <div className="error-message visible">
+              {authError}
+            </div>
+          )}
           
           <div className="input-field">
             <label>Логин или Email</label>
             <div className="input-wrapper">
               <input
                 type="text"
-                value={credentials.login}
+                value={credentials.loginOrEmail}
                 onChange={(e) => {
-                    setCredentials({...credentials, login: e.target.value});
-                    setError('');
+                    setCredentials({...credentials, loginOrEmail: e.target.value});
+                    setAuthError(null);
                  }}
+                onKeyPress={handleKeyPress}
+                placeholder="Введите ваш логин или email"
               />
             </div>
           </div>
@@ -63,8 +73,10 @@ export default function Login() {
                 value={credentials.password}
                 onChange={(e) => {
                     setCredentials({...credentials, password: e.target.value});
-                    setError('');
+                    setAuthError(null);
                 }}
+                onKeyPress={handleKeyPress}
+                placeholder="Введите ваш пароль"
               />
               <span 
                 className="password-toggle"
@@ -84,7 +96,13 @@ export default function Login() {
             Запомнить меня
           </label>
 
-          <button className="auth-button" onClick={handleLogin}>Войти</button>
+          <button 
+            className="auth-button" 
+            onClick={handleLogin}
+            disabled={!credentials.loginOrEmail || !credentials.password}
+          >
+            Войти
+          </button>
           
           <div 
             className="register-link"

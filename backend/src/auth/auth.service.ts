@@ -13,7 +13,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import Redis from 'ioredis';
 import { MailService } from 'src/mail/mail.service';
-import { SystemRole } from 'src/roles/role.enum';
+import { SystemRole } from 'src/enums/roles/role.enum';
+import { ProfileStatus } from '../enums/profile-status';
 import { VerifyCodeDto, SendCodeDto } from './dto/send-code.dto';
 
 @Injectable()
@@ -23,7 +24,7 @@ export class AuthService {
 
   constructor(
     private jwtService: JwtService,
-    @Inject('REDIS_CLIENT') redisClient: Redis,
+    @Inject('REDIS_TOKEN_CLIENT') redisClient: Redis,
     private prisma: PrismaService,
     private mailService: MailService,
   ) {
@@ -82,12 +83,23 @@ export class AuthService {
     return true;
   }
 
-  async loginVerify(login: string, password: string): Promise<string | null> {
-    const user = await this.prisma.account.findUnique({
-      where: { login },
+  async loginVerify(
+    loginOrEmail: string,
+    password: string,
+  ): Promise<string | null> {
+    const user = await this.prisma.account.findFirst({
+      where: {
+        OR: [{ login: loginOrEmail }, { email: loginOrEmail }],
+      },
     });
 
     if (user && (await bcrypt.compare(password, user.password))) {
+      await this.prisma.account.update({
+        where: { primarykey: user.primarykey },
+        data: {
+          status: ProfileStatus.ACTIVE,
+        },
+      });
       return user.primarykey;
     }
 
@@ -171,6 +183,7 @@ export class AuthService {
         lastName: dto.lastName,
         isEmailVerified: true,
         roleRef: { connect: { primarykey: role.primarykey } },
+        status: ProfileStatus.PENDING,
       },
     });
 

@@ -18,7 +18,7 @@ export class JwtAuthGuard implements CanActivate {
   constructor(
     private jwtService: JwtService,
     private reflector: Reflector,
-    @Inject('REDIS_CLIENT') redisClient: Redis,
+    @Inject('REDIS_TOKEN_CLIENT') redisClient: Redis,
   ) {
     this.redis = redisClient;
   }
@@ -65,28 +65,33 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('Refresh token not provided');
     }
 
-    let userId: string = '';
     try {
       const payload = await this.jwtService.verifyAsync(refreshToken, {
         secret: process.env.JWT_REFRESH_SECRET,
       });
-      userId = payload.sub;
+      const userId = payload.sub;
 
       const storedRefreshToken = await this.redis.get(`refresh_${userId}`);
+
+      if (!storedRefreshToken) {
+        throw new UnauthorizedException('Session expired');
+      }
 
       if (refreshToken !== storedRefreshToken) {
         throw new UnauthorizedException('Invalid refresh token');
       }
 
-      const newTokens = await this.generateNewTokens(userId);
-      this.attachTokensToResponse(response, newTokens);
+      const newAccessToken = await this.jwtService.signAsync(
+        { sub: userId },
+        { expiresIn: '15m', secret: process.env.JWT_SECRET },
+      );
 
-      request.headers.authorization = `Bearer ${newTokens.accessToken}`;
+      // Возвращаем только новый accessToken
+      request.headers.authorization = `Bearer ${newAccessToken}`;
+      response.setHeader('Authorization', `Bearer ${newAccessToken}`);
+
       return true;
     } catch (error) {
-      if (userId === '') {
-        await this.redis.del(`refresh_${userId}`);
-      }
       throw new UnauthorizedException('Session expired. Please login again');
     }
   }
@@ -97,14 +102,7 @@ export class JwtAuthGuard implements CanActivate {
       { expiresIn: '15m', secret: process.env.JWT_SECRET },
     );
 
-    const refreshToken = await this.jwtService.signAsync(
-      { sub: userId },
-      { expiresIn: '7d', secret: process.env.JWT_REFRESH_SECRET },
-    );
-
-    await this.redis.set(`refresh_${userId}`, refreshToken, 'EX', 604800);
-
-    return { accessToken, refreshToken };
+    return { accessToken };
   }
 
   private extractToken(req: Request): string | undefined {

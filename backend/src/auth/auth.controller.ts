@@ -7,6 +7,8 @@ import {
   Res,
   ConflictException,
   RequestTimeoutException,
+  UseGuards,
+  Req,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -14,10 +16,13 @@ import { Public } from 'src/common/decorators/public.decorator';
 import { Response } from 'express';
 import { LoginDto } from './dto/login.dto';
 import { SendCodeDto, VerifyCodeDto } from './dto/send-code.dto';
+import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
+import { Request } from 'express';
 
 @Public()
 @Controller('auth')
 export class AuthController {
+  private userId: string;
   constructor(private readonly authService: AuthService) {}
 
   @Post('send-confirmation-code')
@@ -56,7 +61,10 @@ export class AuthController {
   @Post('login')
   @HttpCode(200)
   async login(@Body() body: LoginDto, @Res() res: Response) {
-    const user = await this.authService.loginVerify(body.login, body.password);
+    const user = await this.authService.loginVerify(
+      body.loginOrEmail,
+      body.password,
+    );
     if (!user) {
       throw new UnauthorizedException(
         'Неверные данные для входа, логин или пароль.',
@@ -79,19 +87,23 @@ export class AuthController {
     return res.send({ accessToken: tokens.accessToken });
   }
 
-  // @Post('refresh')
-  // @HttpCode(200)
-  // async refresh(@Body('userId') userId: string, @Body('token') token: string) {
-  //   if (await this.authService.validateRefreshToken(userId, token)) {
-  //     return this.authService.generateTokens(userId);
-  //   }
-  //   throw new UnauthorizedException('Invalid refresh token');
-  // }
+  @UseGuards(JwtAuthGuard)
+  @Post('refresh')
+  @HttpCode(200)
+  refresh(@Req() req: Request) {
+    // Guard уже проверит refresh token и обновит токены
+    return { success: true };
+  }
 
   @Post('logout')
   @HttpCode(200)
-  async logout(@Body('userId') userId: string) {
-    await this.authService.logout(userId);
+  async logout(@Req() req: Request) {
+    if (!req.user?.primarykey) {
+      throw new UnauthorizedException('User not authenticated');
+    }
+
+    this.userId = req.user?.primarykey;
+    await this.authService.logout(this.userId);
     return { message: 'Logged out' };
   }
 }

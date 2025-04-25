@@ -1,7 +1,8 @@
 {
   "compilerOptions": {
     "module": "commonjs",
-    "types": ["node", "multer"],
+    "types": ["node", "multer", "express"],
+    "typeRoots": ["src/types", "./node_modules/@types"],
     "declaration": true,
     "removeComments": true,
     "emitDecoratorMetadata": true,
@@ -18,5 +19,7 @@
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false
-  }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules"]
 }

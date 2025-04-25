@@ -19,7 +19,7 @@ import { Public } from 'src/common/decorators/public.decorator';
 import { Response } from 'express';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
-import { SystemRole } from 'src/roles/role.enum';
+import { SystemRole } from 'src/enums/roles/role.enum';
 
 @Public()
 @UseGuards(RolesGuard)
