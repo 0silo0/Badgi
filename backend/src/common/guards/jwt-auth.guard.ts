@@ -15,6 +15,7 @@ import Redis from 'ioredis';
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   private readonly redis: Redis;
+
   constructor(
     private jwtService: JwtService,
     private reflector: Reflector,
@@ -23,7 +24,25 @@ export class JwtAuthGuard implements CanActivate {
     this.redis = redisClient;
   }
 
+  private isLogoutEndpoint(request: Request): boolean {
+    return request.url.includes('/auth/logout') && request.method === 'POST';
+  }
+
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    const request = context.switchToHttp().getRequest();
+
+    // Разрешаем доступ к logout без проверки токена
+    if (this.isLogoutEndpoint(request)) {
+      try {
+        const token = this.extractToken(request);
+        if (token) {
+          const payload = await this.jwtService.verifyAsync(token);
+          request.user = { primarykey: payload.sub }; // Используем sub как primarykey
+        }
+      } catch {} // Игнорируем ошибки верификации
+      return true;
+    }
+
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -33,7 +52,6 @@ export class JwtAuthGuard implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest();
     const response = context.switchToHttp().getResponse();
 
     try {
@@ -46,7 +64,7 @@ export class JwtAuthGuard implements CanActivate {
       return true;
     } catch (error) {
       if (error instanceof Error && error.name === 'TokenExpiredError') {
-        return this.handleExpiredToken(request, response);
+        return this.handleExpiredToken(context);
       }
       throw new UnauthorizedException('Invalid authentication credentials');
     }
@@ -58,7 +76,15 @@ export class JwtAuthGuard implements CanActivate {
     });
   }
 
-  private async handleExpiredToken(request: Request, response: Response) {
+  private async handleExpiredToken(context: ExecutionContext) {
+    const request = context.switchToHttp().getRequest();
+    const response = context.switchToHttp().getResponse();
+
+    // Для logout не пытаемся обновить токен
+    if (this.isLogoutEndpoint(request)) {
+      return true;
+    }
+
     const refreshToken = this.extractRefreshToken(request);
 
     if (!refreshToken) {

@@ -18,8 +18,12 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
     navigate('/login', { replace: true });
   };
 

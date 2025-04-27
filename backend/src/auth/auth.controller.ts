@@ -18,12 +18,16 @@ import { LoginDto } from './dto/login.dto';
 import { SendCodeDto, VerifyCodeDto } from './dto/send-code.dto';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { Request } from 'express';
+import { JwtService } from '@nestjs/jwt';
 
 @Public()
 @Controller('auth')
 export class AuthController {
   private userId: string;
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private jwtService: JwtService,
+  ) {}
 
   @Post('send-confirmation-code')
   @HttpCode(200)
@@ -97,13 +101,46 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(200)
-  async logout(@Req() req: Request) {
-    if (!req.user?.primarykey) {
-      throw new UnauthorizedException('User not authenticated');
-    }
+  async logout(@Req() req: Request, @Res() res: Response) {
+    try {
+      let userId = req.user?.primarykey;
+      console.log(userId)
+      if (!userId) {
+        const refreshToken = req.cookies?.refreshToken;
+        console.log(refreshToken)
+        if (refreshToken) {
+          const payload = this.jwtService.verify(refreshToken, {
+            secret: process.env.JWT_REFRESH_SECRET,
+          });
+          console.log(payload.sub)
+          userId = payload.sub;
+        }
+      }
 
-    this.userId = req.user?.primarykey;
-    await this.authService.logout(this.userId);
-    return { message: 'Logged out' };
+      if (userId) {
+        await this.authService.logout(userId);
+      }
+
+      res.clearCookie('refreshToken', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        path: '/',
+        domain:
+          process.env.NODE_ENV === 'production' ? 'goal-path.ru' : 'localhost',
+      });
+
+      return res.send({ message: 'Logged out successfully' });
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Все равно очищаем куки при ошибке
+      res.clearCookie('refreshToken', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        path: '/',
+        domain:
+          process.env.NODE_ENV === 'production' ? 'goal-path.ru' : 'localhost',
+      });
+      return res.status(200).send({ message: 'Logged out with issues' });
+    }
   }
 }

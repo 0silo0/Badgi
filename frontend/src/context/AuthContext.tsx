@@ -1,7 +1,7 @@
 // src/context/AuthContext.tsx
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import apiClient from '../api/client';
+import apiClient, { createApiClient } from '../api/client';
 
 type AuthContextType = {
   isAuthenticated: boolean;
@@ -19,6 +19,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
   const [authError, setAuthError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const apiClient = useMemo(() => createApiClient(), []);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const login = async ({ loginOrEmail, password, remember }: { 
     loginOrEmail: string; 
@@ -48,18 +50,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Login error:', error);
       const errorMessage = error.response?.data?.message || 'Ошибка авторизации';
       setAuthError(errorMessage);
-      throw error;
     }
   };
 
   const logout = async () => {
+    setIsLoggingOut(true);
     try {
       await apiClient.post('/auth/logout');
     } finally {
       localStorage.removeItem('accessToken');
       sessionStorage.removeItem('accessToken');
       setIsAuthenticated(false);
-      navigate('/login');
+      setIsLoggingOut(false);
+      navigate('/login', { replace: true });
     }
   };
 

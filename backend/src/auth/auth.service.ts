@@ -149,8 +149,12 @@ export class AuthService {
   }
 
   async logout(userId: string) {
-    await this.redis.del(`refresh_${userId}`);
-    console.log('Удален токен для пользователя - ', userId);
+    try {
+      await this.redis.del(`refresh_${userId}`);
+      console.log('Refresh token deleted for user:', userId);
+    } catch (error) {
+      console.error('Error deleting refresh token:', error);
+    }
   }
 
   async register(dto: RegisterDto) {

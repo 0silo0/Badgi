@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './sreens/Auth/Login/Login';
@@ -16,6 +16,7 @@ import Documents from './sreens/Documents/Documents';
 import Calendar from './sreens/Calendar/Calendar';
 import Messages from './sreens/Messages/Messages';
 import Projects from './sreens/Projects/Projects';
+import { createApiClient } from './api/client';
 
 const ProtectedLayout = () => {
   const { isAuthenticated } = useAuth();
