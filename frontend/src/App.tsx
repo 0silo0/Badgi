@@ -16,6 +16,9 @@ import Documents from './sreens/Documents/Documents';
 import Calendar from './sreens/Calendar/Calendar';
 import Messages from './sreens/Messages/Messages';
 import Projects from './sreens/Projects/Projects';
+import ForgotPasswordEmail from './sreens/Auth/ForgotPassword/ForgotPasswordEmail/ForgotPasswordEmail';
+import ForgotPasswordConfirm from './sreens/Auth/ForgotPassword/ForgotPasswordConfirm/ForgotPasswordConfirm';
+import ResetPassword from './sreens/Auth/ForgotPassword/ResetPassword/ResetPassword';
 import { createApiClient } from './api/client';
 
 const ProtectedLayout = () => {
@@ -57,6 +60,13 @@ const AppRoutes = () => {
           <Route path="password" element={<NewPassword />} />
           <Route path="email" element={<NewEmail />} />
           <Route path="confirm" element={<NewEmailConfirm />} />
+        </Route>
+
+        <Route path="/forgot-password">
+          <Route index element={<Navigate to="email" />} />
+          <Route path="email" element={<ForgotPasswordEmail />} />
+          <Route path="confirm" element={<ForgotPasswordConfirm />} />
+          <Route path="reset" element={<ResetPassword />} />
         </Route>
       </Routes>
   );

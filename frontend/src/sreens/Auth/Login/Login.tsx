@@ -104,11 +104,19 @@ export default function Login() {
             Войти
           </button>
           
-          <div 
-            className="register-link"
-            onClick={() => navigate('/register')}
-          >
-            Нет аккаунта? Зарегистрироваться
+          <div className="auth-links">
+            <div 
+              className="register-link"
+              onClick={() => navigate('/register')}
+            >
+              Нет аккаунта? Зарегистрироваться
+            </div>
+            <div 
+              className="forgot-password-link"
+              onClick={() => navigate('/forgot-password')}
+            >
+              Забыли пароль?
+            </div>
           </div>
         </div>
       </div>
