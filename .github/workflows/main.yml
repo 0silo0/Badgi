@@ -108,18 +108,18 @@ jobs:
           docker push ${{ secrets.DOCKER_USERNAME }}/badgi-admin:$TAG``
 
   deploy:
-  needs: [build_backend, build_frontend, build_admin]
-  runs-on: ubuntu-latest
-  if: startsWith(github.ref, 'refs/tags/')
-  steps:
-    - uses: actions/checkout@v4
-    - name: SSH and deploy
-      uses: appleboy/ssh-action@v1
-      with:
-        host: ${{ secrets.SERVER_IP }}
-        username: ${{ secrets.SERVER_USER }}
-        key: ${{ secrets.SSH_KEY }}
-        script: |
-          cd /path/to/your/project
-          chmod +x deploy.sh
-          ./deploy.sh ${{ github.ref_name }}
+    needs: [build_backend, build_frontend, build_admin]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@v4
+      - name: SSH and deploy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd /path/to/your/project
+            chmod +x deploy.sh
+            ./deploy.sh ${{ github.ref_name }}
