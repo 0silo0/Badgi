@@ -121,4 +121,4 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script: |
             cd ~/badgi
-            ./deploy.sh ${{ github.ref_name }}
+            sudo ./deploy.sh ${{ github.ref_name }}
