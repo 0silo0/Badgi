@@ -108,7 +108,7 @@ jobs:
   #         docker push ${{ secrets.DOCKER_USERNAME }}/badgi-admin:$TAG``
 
   deploy:
-    needs: [build_backend, build_frontend, build_admin]
+    needs: [build_backend, build_frontend]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
