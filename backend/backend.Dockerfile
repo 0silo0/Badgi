@@ -24,6 +24,5 @@ COPY --from=builder /usr/src/app/badgi/dist ./dist
 COPY --from=builder /usr/src/app/badgi/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /usr/src/app/badgi/package*.json ./
 COPY --from=builder /usr/src/app/badgi/prisma ./prisma
-COPY .env ./
 
 CMD ["node", "dist/main"]
