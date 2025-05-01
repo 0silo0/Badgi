@@ -120,6 +120,5 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            cd /path/to/your/project
-            chmod +x deploy.sh
+            cd ~/badgi
             ./deploy.sh ${{ github.ref_name }}
