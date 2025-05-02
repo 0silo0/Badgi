@@ -1,4 +1,4 @@
-import { IsEmail, IsString, Length } from 'class-validator';
+import { isEAN, IsEmail, IsString, Length } from 'class-validator';
 
 // src/auth/dto/send-code.dto.ts
 export class SendCodeDto {
@@ -14,6 +14,14 @@ export class VerifyCodeDto {
   @IsString()
   @Length(6, 6)
   code: string;
+}
+
+export class ResetPassword {
+  @IsEmail()
+  email: string;
+
+  @IsString()
+  password: string;
 }
 
 // src/auth/dto/register.dto.ts

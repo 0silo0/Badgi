@@ -1,20 +1,46 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import './ResetPassword.scss';
+import { isAxiosError } from 'axios';
+import apiClient from '../../../../api/client';
 
 export default function ResetPassword() {
   const navigate = useNavigate();
+  const { state } = useLocation();
+  const email = state?.email || '';
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (password !== confirmPassword) {
       setError('Пароли не совпадают');
       return;
     }
+
+    setIsLoading(true);
+    try {
+      const response = await apiClient.post('/auth/reset-password', {
+        email,
+        password: confirmPassword
+      });
+
+      if (response.data.success) {
+        navigate('/login', { state: { passwordReset: true } });
+      }
+    } catch (err) {
+      if (isAxiosError(err)) {
+        setError(err.response?.data?.message || 'Ошибка при смене пароля');
+      } else {
+        setError('Произошла неизвестная ошибка');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+    
     navigate('/login', { state: { passwordReset: true } });
   };
 

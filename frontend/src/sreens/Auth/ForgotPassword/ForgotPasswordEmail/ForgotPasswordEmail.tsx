@@ -16,25 +16,22 @@ export default function ForgotPasswordEmail() {
       setError('Поле email обязательно для заполнения');
       return;
     }
-    
+
     setIsLoading(true);
-    setTimeout(() => {
+    setError('');
+
+    try {
+      await apiClient.post('/auth/send-confirmation-code-reset-email', { email });
+      navigate('../confirm', { state: { email } });
+    } catch (err) {
+      if (isAxiosError(err)) {
+        setError(err.response?.data?.message || 'Ошибка при отправке кода');
+      } else {
+        setError('Произошла неизвестная ошибка');
+      }
+    } finally {
       setIsLoading(false);
-      navigate('../confirm'); // Переход сразу
-    }, 1000);
-    // setIsLoading(true);
-    // try {
-    //   await apiClient.post('/auth/send-password-reset-code', { email });
-    //   navigate('../confirm');
-    // } catch (err) {
-    //   if (isAxiosError(err)) {
-    //     setError(err.response?.data?.message || 'Ошибка при отправке кода');
-    //   } else {
-    //     setError('Произошла неизвестная ошибка');
-    //   }
-    // } finally {
-    //   setIsLoading(false);
-    // }
+    }
   };
 
   return (

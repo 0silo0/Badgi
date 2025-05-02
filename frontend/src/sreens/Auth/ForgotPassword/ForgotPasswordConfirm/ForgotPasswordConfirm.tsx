@@ -1,5 +1,5 @@
-import { useState, useRef, KeyboardEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useRef, KeyboardEvent, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { FaArrowLeft } from 'react-icons/fa';
 import apiClient from '../../../../api/client';
 import { isAxiosError } from 'axios';
@@ -7,11 +7,20 @@ import './ForgotPasswordConfirm.scss';
 
 export default function ForgotPasswordConfirm() {
   const navigate = useNavigate();
+  const { state } = useLocation();
+  const email = state?.email || '';
   const [code, setCode] = useState<string[]>(Array(6).fill(''));
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [canResend, setCanResend] = useState(true);
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => {
+    if (!email) {
+      navigate('../email');
+    }
+  }, [email, navigate]);
 
   const handleChange = (value: string, index: number) => {
     if (!/^\d*$/.test(value)) return;
@@ -31,34 +40,36 @@ export default function ForgotPasswordConfirm() {
 
   const handleVerify = async () => {
     const fullCode = code.join('');
-    if (fullCode !== '111111') {
-      setError('Неверный код подтверждения');
-      setStatus('error');
-      return;
-    }
+    if (fullCode.length !== 6) return;
 
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      if (fullCode.length === 6) {
-        navigate('../reset'); // Переход на сброс пароля
-      } else {
-        setError('Введите 6 цифр');
-        setStatus('error');
-      }
-    }, 1000);
+    try {
+      const response = await apiClient.post('/auth/verify-confirmation-code', {
+        email,
+        code: fullCode
+      });
 
-    // setIsLoading(true);
-    // try {
-    //   // await apiClient.post('/verify-reset-code', { code: fullCode });
-    //   setStatus('success');
-    //   navigate('../reset');
-    // } catch (err) {
-    //   setError('Ошибка при проверке кода');
-    //   setStatus('error');
-    // } finally {
-    //   setIsLoading(false);
-    // }
+      if (response.data.success) {
+        setStatus('success');
+        navigate('../reset', { state: { email } });
+      } else {
+        setStatus('error');
+        setError('Неверный код подтверждения');
+        setCode(Array(6).fill(''));
+        inputsRef.current[0]?.focus();
+      }
+    } catch (err) {
+      setStatus('error');
+      if (isAxiosError(err)) {
+        setError(err.response?.data?.message || 'Ошибка при проверке кода');
+      } else {
+        setError('Произошла неизвестная ошибка');
+      }
+      setCode(Array(6).fill(''));
+      inputsRef.current[0]?.focus();
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -69,7 +80,9 @@ export default function ForgotPasswordConfirm() {
 
       <div className="glass-panel">
         <h2>Подтверждение кода</h2>
-        <p className="step-info">Введите код из письма</p>
+        <p className="step-info">
+          Введите код из письма, отправленного на {email}
+        </p>
 
         <div className={`status-message ${status} ${status !== 'idle' ? 'visible' : ''}`}>
           {status === 'error' && error}
@@ -104,17 +117,26 @@ export default function ForgotPasswordConfirm() {
         </div>
 
         <div className="resend-code">
-          Не получили код?{' '}
-          <button
+          Не получили код? <button 
             onClick={async () => {
+              if (!canResend) return;
               try {
-                await apiClient.post('/resend-reset-code');
+                setCanResend(false);
+                await apiClient.post('/auth/send-confirmation-code-reset-email', { email });
+                setTimeout(() => setCanResend(true), 60000);
+                setStatus('idle');
+                setCode(Array(6).fill(''));
+                inputsRef.current[0]?.focus();
               } catch (err) {
-                setError('Ошибка при отправке кода');
+                setCanResend(true);
+                if (isAxiosError(err)) {
+                  setError(err.response?.data?.message || 'Ошибка при отправке кода');
+                }
               }
             }}
+            disabled={!canResend}
           >
-            Отправить повторно
+            {canResend ? 'Отправить повторно' : 'Повторная отправка через 60 сек'}
           </button>
         </div>
       </div>

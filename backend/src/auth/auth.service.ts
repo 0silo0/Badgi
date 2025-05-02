@@ -15,7 +15,7 @@ import Redis from 'ioredis';
 import { MailService } from 'src/mail/mail.service';
 import { SystemRole } from 'src/enums/roles/role.enum';
 import { ProfileStatus } from '../enums/profile-status';
-import { VerifyCodeDto, SendCodeDto } from './dto/send-code.dto';
+import { VerifyCodeDto, SendCodeDto, ResetPassword } from './dto/send-code.dto';
 
 @Injectable()
 export class AuthService {
@@ -31,7 +31,7 @@ export class AuthService {
     this.redis = redisClient;
   }
 
-  async sendConfirmationCode(dto: SendCodeDto) {
+  async sendConfirmationCode(dto: SendCodeDto, type?: string) {
     const rateLimit = await this.redis.get(`confirm_rate_limit:${dto.email}`);
     if (rateLimit) {
       throw new RequestTimeoutException(
@@ -43,8 +43,10 @@ export class AuthService {
       where: { email: dto.email },
     });
 
-    if (existingUser) {
+    if (existingUser && type !== 'resetEmail') {
       throw new ConflictException('Email уже зарегистрирован');
+    } else if (!existingUser && type === 'resetEmail') {
+      throw new ConflictException('На этот Email не зарегистрирован аккаунт');
     }
 
     const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -54,9 +56,14 @@ export class AuthService {
     pipeline.set(`confirm_rate_limit:${dto.email}`, '1', 'EX', 5);
     await pipeline.exec();
 
+    console.log(`Код ${code} отправлен на почту ${dto.email}`);
+
     await this.mailService.sendMail({
       to: dto.email,
-      subject: 'Код подтверждения',
+      subject:
+        type === 'resetEmail'
+          ? 'Код подтверждения для восстановления пароля'
+          : 'Код подтверждения',
       html: `Ваш код подтверждения: <b>${code}</b> (действителен 15 минут)`,
     });
   }
@@ -76,10 +83,28 @@ export class AuthService {
       return false;
     }
 
+    console.log('Код подтвержден');
+
     await this.redis.del([
       `confirm:${dto.email}`,
       `confirm_attempts:${dto.email}`,
     ]);
+    return true;
+  }
+
+  async resetPassword(dto: ResetPassword) {
+    const hashedPassword = dto.password
+      ? await bcrypt.hash(dto.password, 10)
+      : undefined;
+
+    await this.prisma.account.update({
+      where: { email: dto.email },
+      data: {
+        password: hashedPassword,
+        editAt: new Date(),
+      },
+    });
+
     return true;
   }
 

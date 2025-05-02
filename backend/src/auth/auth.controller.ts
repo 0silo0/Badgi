@@ -15,7 +15,7 @@ import { RegisterDto } from './dto/register.dto';
 import { Public } from 'src/common/decorators/public.decorator';
 import { Response } from 'express';
 import { LoginDto } from './dto/login.dto';
-import { SendCodeDto, VerifyCodeDto } from './dto/send-code.dto';
+import { ResetPassword, SendCodeDto, VerifyCodeDto } from './dto/send-code.dto';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { Request } from 'express';
 import { JwtService } from '@nestjs/jwt';
@@ -46,10 +46,38 @@ export class AuthController {
     }
   }
 
+  @Post('send-confirmation-code-reset-email')
+  @HttpCode(200)
+  async sendConfirmationCodeResetEmail(@Body() dto: SendCodeDto) {
+    try {
+      const type = 'resetEmail';
+      await this.authService.sendConfirmationCode(dto, type);
+      return { success: true };
+    } catch (error) {
+      if (error instanceof RequestTimeoutException) {
+        throw new RequestTimeoutException(error.message);
+      }
+      if (error instanceof ConflictException) {
+        throw new ConflictException(error.message);
+      }
+      throw error;
+    }
+  }
+
   @Post('verify-confirmation-code')
   @HttpCode(200)
   async verifyConfirmationCode(@Body() dto: VerifyCodeDto) {
     const isValid = await this.authService.verifyConfirmationCode(dto);
+    if (!isValid) {
+      throw new UnauthorizedException('Неверный или просроченный код');
+    }
+    return { success: true };
+  }
+
+  @Post('reset-password')
+  @HttpCode(200)
+  async resetPassword(@Body() dto: ResetPassword) {
+    const isValid = await this.authService.resetPassword(dto);
     if (!isValid) {
       throw new UnauthorizedException('Неверный или просроченный код');
     }
