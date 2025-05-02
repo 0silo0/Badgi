@@ -34,7 +34,7 @@ export const createApiClient = (logoutFn?: () => Promise<void>) => {
             { withCredentials: true }
           );
           
-          const newAccessToken = refreshResponse.headers['authorization']?.split(' ')[1];
+          const newAccessToken = refreshResponse.data.accessToken;
           
           if (newAccessToken) {
             const storage = localStorage.getItem('accessToken') 

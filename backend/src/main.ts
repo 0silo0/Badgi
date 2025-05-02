@@ -3,9 +3,12 @@ import { AppModule } from './app.module';
 import { PrismaService } from './prisma/prisma.service';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { JwtService } from '@nestjs/jwt';
+import * as cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  app.use(cookieParser());
 
   app.enableCors({
     origin: [
@@ -17,21 +20,16 @@ async function bootstrap() {
       'https://176.123.160.42:3100',
       'https://176.123.160.42:3101',
     ],
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    methods: ['GET', 'HEAD', 'PATCH', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'], // Разрешенные заголовки
     credentials: true, // Позволяет отправлять cookies и авторизационные заголовки
+    exposedHeaders: ['Authorization', 'Set-Cookie'],
   });
 
   const prismaService = app.get(PrismaService);
   await prismaService.enableShutdownHooks(app);
 
-  app.useGlobalGuards(
-    new JwtAuthGuard(
-      app.get(JwtService),
-      app.get(Reflector),
-      app.get('REDIS_CLIENT'),
-    ),
-  );
+
 
   const portStr = process.env.BACKEND_PORT || '4132';
   const port = parseInt(portStr, 10);

@@ -1,28 +1,62 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import ProfileHeader from './ProfileHeader/ProfileHeader';
 import TasksSection from './TasksSection/TasksSection';
 import CalendarSection from './CalendarSection/CalendarSection';
 import TimeDataSection from './TimeDataSection/TimeDataSection';
 import EditProfileModal from './EditProfileModal/EditProfileModal';
 import './Profile.scss';
+import { ProfileApi, ProfileViewData, UserProfile } from '../../api/profile';
 
 const Profile: React.FC = () => {
-    const [userData, setUserData] = useState({
-        name: 'Никита Вершинин',
-        login: '@nikita_official',
-        email: 'nikita@mail.ru',
-        avatar: 'https://source.unsplash.com/random/400x400/?person'
-    });
+    const [userData, setUserData] = useState<UserProfile | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
     const [showEditModal, setShowEditModal] = useState(false);
+
+    useEffect(() => {
+        const fetchProfile = async () => {
+            try {
+                const data = await ProfileApi.getProfile();
+                setUserData({
+                    primarykey: data.primarykey,
+                    firstName: data.firstName,
+                    lastName: data.lastName,
+                    email: data.email,
+                    login: data.login,
+                    avatarUrl: data.avatarUrl,
+                    createAt: new Date(data.createAt),
+                    editAt: new Date(data.editAt)
+                });
+            } catch (err) {
+                setError('Не удалось загрузить профиль');
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchProfile();
+    }, []);
 
     const handleSaveProfile = (newData: any, oldPassword?: string, newPassword?: string) => {
         setUserData(newData);
     };
 
+    if (loading) return <div>Загрузка...</div>;
+    if (error) return <div>{error}</div>;
+    if (!userData) return <div>Данные профиля отсутствуют</div>;
+
+    const profileViewData: ProfileViewData = {
+        name: `${userData.firstName} ${userData.lastName}`,
+        login: userData.login,
+        email: userData.email,
+        avatar: userData.avatarUrl || undefined
+    };
+
     return (
         <div className="page-container">
             <ProfileHeader 
-                userData={userData} 
+                userData={profileViewData}
                 onEditClick={() => setShowEditModal(true)}
             />
             
@@ -42,13 +76,13 @@ const Profile: React.FC = () => {
                 </div>
             </div>
 
-            {showEditModal && (
+            {/* {showEditModal && (
                 <EditProfileModal
                     userData={userData}
                     onClose={() => setShowEditModal(false)}
                     onSave={handleSaveProfile}
                 />
-            )}
+            )} */}
         </div>
     );
 };

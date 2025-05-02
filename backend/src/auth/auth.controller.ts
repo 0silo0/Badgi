@@ -9,6 +9,7 @@ import {
   RequestTimeoutException,
   UseGuards,
   Req,
+  Get,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -20,7 +21,6 @@ import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { Request } from 'express';
 import { JwtService } from '@nestjs/jwt';
 
-@Public()
 @Controller('auth')
 export class AuthController {
   private userId: string;
@@ -29,6 +29,7 @@ export class AuthController {
     private jwtService: JwtService,
   ) {}
 
+  @Public()
   @Post('send-confirmation-code')
   @HttpCode(200)
   async sendConfirmationCode(@Body() dto: SendCodeDto) {
@@ -46,6 +47,7 @@ export class AuthController {
     }
   }
 
+  @Public()
   @Post('send-confirmation-code-reset-email')
   @HttpCode(200)
   async sendConfirmationCodeResetEmail(@Body() dto: SendCodeDto) {
@@ -64,6 +66,7 @@ export class AuthController {
     }
   }
 
+  @Public()
   @Post('verify-confirmation-code')
   @HttpCode(200)
   async verifyConfirmationCode(@Body() dto: VerifyCodeDto) {
@@ -74,6 +77,7 @@ export class AuthController {
     return { success: true };
   }
 
+  @Public()
   @Post('reset-password')
   @HttpCode(200)
   async resetPassword(@Body() dto: ResetPassword) {
@@ -84,12 +88,14 @@ export class AuthController {
     return { success: true };
   }
 
+  @Public()
   @Post('register')
   @HttpCode(201)
   async register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
   }
 
+  @Public()
   @Post('login')
   @HttpCode(200)
   async login(@Body() body: LoginDto, @Res() res: Response) {
@@ -120,13 +126,19 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Post('refresh')
+  @Get('refresh')
   @HttpCode(200)
-  refresh(@Req() req: Request) {
-    // Guard уже проверит refresh token и обновит токены
-    return { success: true };
+  async refresh(@Req() req: Request) {
+    const newAccessToken = req.headers['authorization']?.replace('Bearer ', '');
+    if (!newAccessToken) {
+      throw new UnauthorizedException('Failed to refresh token');
+    }
+
+    console.log('Returning new access token');
+    return { accessToken: newAccessToken };
   }
 
+  @Public()
   @Post('logout')
   @HttpCode(200)
   async logout(@Req() req: Request, @Res() res: Response) {
@@ -135,12 +147,10 @@ export class AuthController {
       console.log(userId)
       if (!userId) {
         const refreshToken = req.cookies?.refreshToken;
-        console.log(refreshToken)
         if (refreshToken) {
           const payload = this.jwtService.verify(refreshToken, {
             secret: process.env.JWT_REFRESH_SECRET,
           });
-          console.log(payload.sub)
           userId = payload.sub;
         }
       }

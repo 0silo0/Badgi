@@ -1,14 +1,10 @@
 import React from 'react';
 import { FiEdit } from 'react-icons/fi';
 import './ProfileHeader.scss';
+import { ProfileViewData, UserProfile } from '../../../api/profile';
 
 interface ProfileHeaderProps {
-  userData: {
-    name: string;
-    login: string;
-    email: string;
-    avatar: string;
-  };
+  userData: ProfileViewData;
   onEditClick: () => void;
 }
 
