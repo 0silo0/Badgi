@@ -38,9 +38,28 @@ const Profile: React.FC = () => {
         fetchProfile();
     }, []);
 
-    const handleSaveProfile = (newData: any, oldPassword?: string, newPassword?: string) => {
-        setUserData(newData);
-    };
+    const handleSaveProfile = async (updatedUser: UserProfile, oldPassword?: string, newPassword?: string) => {
+        try {
+            const response = await ProfileApi.updateProfile({
+                firstName: updatedUser.firstName,
+                lastName: updatedUser.lastName,
+                email: updatedUser.email,
+                login: updatedUser.login,
+                avatarUrl: updatedUser.avatarUrl || null
+              });
+
+            if (newPassword && oldPassword) {
+                await ProfileApi.changePassword({
+                oldPassword,
+                newPassword
+                });
+            }
+      
+            setUserData(response);
+        } catch (error) {
+          console.error('Ошибка при сохранении профиля:', error);
+        }
+      };
 
     if (loading) return <div>Загрузка...</div>;
     if (error) return <div>{error}</div>;
@@ -76,13 +95,13 @@ const Profile: React.FC = () => {
                 </div>
             </div>
 
-            {/* {showEditModal && (
+            {showEditModal && userData && (
                 <EditProfileModal
                     userData={userData}
                     onClose={() => setShowEditModal(false)}
                     onSave={handleSaveProfile}
                 />
-            )} */}
+            )}
         </div>
     );
 };

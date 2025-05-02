@@ -8,6 +8,9 @@ import { S3Module } from './s3/s3.module';
 import { FilesController } from './files/files.controller';
 import { MailModule } from './mail/mail.module';
 import { ProfileModule } from './profile/profile.module';
+import { MulterModule } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
 
 @Module({
   imports: [
@@ -16,6 +19,21 @@ import { ProfileModule } from './profile/profile.module';
     AuthModule,
     S3Module,
     MailModule,
+    MulterModule.register({
+      storage: diskStorage({
+        destination: './uploads', // временная папка для загрузки
+        filename: (req, file, callback) => {
+          const randomName = Array(32)
+            .fill(null)
+            .map(() => Math.round(Math.random() * 16).toString(16))
+            .join('');
+          return callback(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+      limits: {
+        fileSize: 10 * 1024 * 1024, // 5MB
+      },
+    }),
     ProfileModule,
   ],
   controllers: [AppController, FilesController],

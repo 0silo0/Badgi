@@ -31,7 +31,11 @@ export const ProfileApi = {
 
   async updateProfile(profileData: Partial<UserProfile>): Promise<UserProfile> {
     const response = await apiClient.patch('/profile', profileData);
-    return response.data;
+    return {
+      ...response.data,
+      createAt: new Date(response.data.createAt),
+      editAt: new Date(response.data.editAt),
+    };
   },
 
   async changePassword(passwordData: PasswordChangeData): Promise<void> {

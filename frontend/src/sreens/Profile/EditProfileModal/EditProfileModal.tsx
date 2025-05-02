@@ -1,22 +1,29 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FiX, FiCheck, FiEye, FiEyeOff, FiUpload, FiXCircle } from 'react-icons/fi';
 import './EditProfileModal.scss';
-
-interface UserData {
-  name: string;
-  login: string;
-  email: string;
-  avatar: string;
-}
+import { ProfileApi, UserProfile } from '../../../api/profile';
 
 interface EditProfileModalProps {
-  userData: UserData;
+  userData: UserProfile;
   onClose: () => void;
-  onSave: (data: UserData, password?: string, newPassword?: string) => void;
+  onSave: (data: UserProfile, password?: string, newPassword?: string) => void;
 }
 
 const EditProfileModal: React.FC<EditProfileModalProps> = ({ userData, onClose, onSave }) => {
-  const [formData, setFormData] = useState<UserData>({ ...userData });
+  const [formData, setFormData] = useState<{
+    firstName: string;
+    lastName: string;
+    email: string;
+    login: string;
+    avatarUrl?: string | null;
+    avatarFile?: File;  // Изменим тип на необязательный
+  }>({
+    firstName: userData.firstName,
+    lastName: userData.lastName,
+    email: userData.email,
+    login: userData.login,
+    avatarUrl: userData.avatarUrl || null,
+  });
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -36,23 +43,39 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ userData, onClose, 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setFormData({ ...formData, avatar: event.target?.result as string });
-      };
-      reader.readAsDataURL(file);
+      if (file.size > 10 * 1024 * 1024) {
+        setErrors({ ...errors, avatarUrl: 'Файл слишком большой (макс. 5MB)' });
+        return;
+      }
+      
+      if (!file.type.startsWith('image/')) {
+        setErrors({ ...errors, avatarUrl: 'Пожалуйста, загрузите изображение' });
+        return;
+      }
+
+      const previewUrl = URL.createObjectURL(file);
+      setFormData({ 
+        ...formData, 
+        avatarUrl: previewUrl,
+        avatarFile: file
+      });
+      setErrors({ ...errors, avatar: '' });
     }
   };
 
   const handleRemoveAvatar = () => {
     if (window.confirm('Вы уверены, что хотите удалить аватар?')) {
-      setFormData({ ...formData, avatar: '' });
+      setFormData({ 
+        ...formData, 
+        avatarUrl: null,
+        avatarFile: undefined
+      });
     }
   };
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-    if (!formData.name.trim()) newErrors.name = 'Имя обязательно';
+    if (!formData.firstName.trim()) newErrors.firstName = 'Имя обязательно';
     if (!formData.login.trim()) newErrors.login = 'Логин обязателен';
     if (!formData.email.trim()) newErrors.email = 'Email обязателен';
     if (newPassword && newPassword !== confirmPassword) {
@@ -62,16 +85,49 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ userData, onClose, 
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!validateForm()) return;
-    
-    const passwordData = newPassword ? {
-      password: oldPassword,
-      newPassword: newPassword
-    } : undefined;
 
-    onSave(formData, passwordData?.password, passwordData?.newPassword);
-    onClose();
+    try {
+      const updateData: Partial<UserProfile> = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        login: formData.login,
+        avatarUrl: formData.avatarUrl || null
+      };
+
+      let newAvatarUrl = formData.avatarUrl;
+      if (formData.avatarFile) {
+        const { avatarUrl } = await ProfileApi.uploadAvatar(formData.avatarFile);
+        newAvatarUrl = avatarUrl;
+        updateData.avatarUrl = avatarUrl;
+      }
+
+      const updatedUser = await ProfileApi.updateProfile(updateData);
+
+      if (newPassword) {
+        await ProfileApi.changePassword({
+          oldPassword,
+          newPassword
+        });
+      }
+
+      onSave({
+        ...userData,
+        ...updateData,
+        avatarUrl: newAvatarUrl || null,
+        editAt: new Date()
+      }, oldPassword, newPassword);
+
+      onClose();
+    } catch (error) {
+      console.error('Ошибка при сохранении профиля:', error);
+      setErrors({
+        ...errors,
+        form: 'Не удалось сохранить изменения. Проверьте введенные данные.'
+      });
+    }
   };
 
   return (
@@ -83,9 +139,9 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ userData, onClose, 
 
         <div className="avatar-section">
           <div className="avatar-wrapper" onClick={() => fileInputRef.current?.click()}>
-            {formData.avatar ? (
+            {formData.avatarUrl ? (
               <>
-                <img src={formData.avatar} alt="Аватар" className="avatar" />
+                <img src={formData.avatarUrl} alt="Аватар" className="avatar" />
                 <button className="remove-avatar" onClick={handleRemoveAvatar}>
                   <FiXCircle size={20} />
                 </button>
@@ -109,8 +165,8 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ userData, onClose, 
           <label>Фамилия</label>
           <input
             type="text"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            value={formData.lastName}
+            onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
           />
           {errors.name && <span className="error">{errors.name}</span>}
         </div>
@@ -119,8 +175,8 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ userData, onClose, 
           <label>Имя</label>
           <input
             type="text"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            value={formData.firstName}
+            onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
           />
           {errors.name && <span className="error">{errors.name}</span>}
         </div>
@@ -142,6 +198,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ userData, onClose, 
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              readOnly
             />
             {emailVerified ? (
               <FiCheck className="verified-icon" />
