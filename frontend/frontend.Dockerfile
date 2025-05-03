@@ -11,5 +11,5 @@ RUN npm run build
 
 FROM node:20.18.0-alpine
 RUN npm install -g serve
-COPY --from=builder /usr/src/app/build /usr/src/app/build
+COPY --from=build /usr/src/app/build /usr/src/app/build
 CMD ["serve", "-s", "build", "-l", "3000"]
