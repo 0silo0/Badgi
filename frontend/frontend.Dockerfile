@@ -9,8 +9,7 @@ COPY . .
 
 RUN npm run build
 
-FROM nginx:alpine AS production
-COPY --from=build /usr/src/app/build /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-CMD ["nginx", "-g", "daemon off;"]
+FROM node:20.18.0-alpine
+RUN npm install -g serve
+COPY --from=builder /usr/src/app/build /usr/src/app/build
+CMD ["serve", "-s", "build", "-l", "3000"]
