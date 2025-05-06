@@ -14,7 +14,7 @@ import Settings from './sreens/Settings/Settings';
 import Notifications from './sreens/Notifications/Notifications';
 import Documents from './sreens/Documents/Documents';
 import Calendar from './sreens/Calendar/Calendar';
-import Messages from './sreens/Messages/Messages';
+import { Messages } from './sreens/Messages/Messages';
 import Projects from './sreens/Projects/Projects';
 import ForgotPasswordEmail from './sreens/Auth/ForgotPassword/ForgotPasswordEmail/ForgotPasswordEmail';
 import ForgotPasswordConfirm from './sreens/Auth/ForgotPassword/ForgotPasswordConfirm/ForgotPasswordConfirm';

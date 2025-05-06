@@ -1,4 +1,56 @@
 import axios from 'axios';
+import { io, Socket } from 'socket.io-client';
+
+let chatSocket: Socket | null = null;
+
+const refreshToken = async (): Promise<string | null> => {
+  try {
+    const response = await axios.get('/auth/refresh', { withCredentials: true });
+    const newToken = response.data.accessToken;
+    
+    const storage = localStorage.getItem('accessToken') 
+      ? localStorage 
+      : sessionStorage;
+    storage.setItem('accessToken', newToken);
+    
+    return newToken;
+  } catch (error) {
+    return null;
+  }
+};
+
+// const setupSocket = (token: string): Socket => {
+//   return io('/api/chat', {
+//     auth: { token },
+//     path: '/socket.io',
+//     transports: ['websocket'],
+//     reconnectionAttempts: 3,
+//   });
+// };
+
+// export const setupChatSocket = (token: string, onMessage: (msg: any) => void) => {
+//   const socket = io(`${process.env.REACT_APP_WS_URL || 'http://localhost:4132/api'}/chat`, {
+//     path: '/socket.io',
+//     transports: ['websocket'],
+//     auth: { token },
+//     query: {
+//       clientType: 'web'
+//     }
+//   });
+
+//   socket.on('connect', () => {
+//     console.log('Socket connected');
+//   });
+
+//   socket.on('chat:message', onMessage); // Исправлено с 'new_message' на 'chat:message'
+
+//   socket.on('error', (err) => {
+//     console.error('Socket error:', err);
+//   });
+
+//   return socket;
+// };
+
 
 export const createApiClient = (logoutFn?: () => Promise<void>) => {
   const apiClient = axios.create({
@@ -10,11 +62,33 @@ export const createApiClient = (logoutFn?: () => Promise<void>) => {
     withCredentials: true,
   });
 
+  const setupSocket = (token: string): Socket => {
+    return io(`${process.env.REACT_APP_WS_URL || 'http://localhost:4132/api'}/chat`, { // Убрали /api
+      auth: { token },
+      transports: ['websocket'],
+    });
+  };
+
   // Interceptor для добавления токена
   apiClient.interceptors.request.use((config) => {
     const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      
+      // Инициализация сокета при первом запросе
+      if (!chatSocket) {
+        chatSocket = setupSocket(token);
+        
+        chatSocket.on('auth_error', async () => {
+          const newToken = await refreshToken();
+          if (newToken) {
+            chatSocket?.disconnect();
+            chatSocket = setupSocket(newToken);
+          } else {
+            logoutFn?.();
+          }
+        });
+      }
     }
     return config;
   });
@@ -42,6 +116,12 @@ export const createApiClient = (logoutFn?: () => Promise<void>) => {
               : sessionStorage;
             storage.setItem('accessToken', newAccessToken);
             originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+
+            if (chatSocket) {
+              chatSocket.disconnect();
+              chatSocket = setupSocket(newAccessToken);
+            }
+
             return apiClient(originalRequest);
           }
         } catch (refreshError) {

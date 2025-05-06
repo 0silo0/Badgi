@@ -1,7 +1,7 @@
 import React from 'react';
 import { FiEdit } from 'react-icons/fi';
 import './ProfileHeader.scss';
-import { ProfileViewData, UserProfile } from '../../../api/profile';
+import { ProfileViewData } from '../../../api/profile';
 
 interface ProfileHeaderProps {
   userData: ProfileViewData;
@@ -14,13 +14,13 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ userData, onEditClick }) 
       <div className="avatar-wrapper">
         <img 
           src={userData.avatar} 
-          //alt="Аватар" 
+          alt="User avatar"
           className="user-avatar"
         />
       </div>
       <div className="user-info">
         <h1 className="user-name">{userData.name}</h1>
-        <p className="user-login">{userData.login}</p>
+        <p className="user-login">@{userData.login}</p>
         <p className="user-email">{userData.email}</p>
       </div>
       <button className="edit-button" onClick={onEditClick}>

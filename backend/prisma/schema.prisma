@@ -218,7 +218,7 @@ model UserSettings {
 }
 
 model File {
-  primarykey        String    @id @default(uuid())
+  primarykey String    @id @default(uuid())
   value     String
   type      String
   userId    String?   @map("userid")
@@ -228,6 +228,7 @@ model File {
   userRef    Account?  @relation("userRef", fields: [userId], references: [primarykey])
 
   @@map("file")
+  ChatAttachment ChatAttachment[]
 }
 
 model Chat {
@@ -237,6 +238,7 @@ model Chat {
   photo        String?
   account       String    @map("account")
   accountRef         Account   @relation(fields: [account], references: [primarykey])
+  isPrivate Boolean @default(false) @map("isprivate")
   
   members      ChatMember[]
   messages     ChatMessage[]
@@ -267,8 +269,23 @@ model ChatMessage {
   updatedAt DateTime  @default(now()) @updatedAt @map("updateat")
   
   readStatus ReadMessage[]
+  attachments ChatAttachment[]
 
   @@map("chat_messages")
+}
+
+model ChatAttachment {
+  primarykey          String    @id @default(uuid())
+  messageId   String    @map("message")
+  message     ChatMessage @relation(fields: [messageId], references: [primarykey])
+  fileId      String    @unique @map("fileid")
+  file        File      @relation(fields: [fileId], references: [primarykey])
+  fileName    String    @map("filename")
+  fileSize    Int       @map("filesize")
+  fileType    String    @map("filetype")
+  uploadedAt  DateTime  @default(now()) @map("uploadedat")
+
+  @@map("chat_attachments")
 }
 
 model ReadMessage {

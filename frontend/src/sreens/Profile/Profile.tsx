@@ -61,7 +61,27 @@ const Profile: React.FC = () => {
         }
       };
 
-    if (loading) return <div>Загрузка...</div>;
+      if (loading) return (
+        <div className="page-container">
+          <div className="scroll-container">
+            <div className="profile-container">
+              <div className="tasks-wrapper">
+                <div className="loading-container">
+                  <div className="wave-loading">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                  <div className="loading-text">Загружаем данные профиля...</div>
+                </div>
+              </div>
+              <div className="calendar-wrapper"></div>
+            </div>
+          </div>
+        </div>
+      );
     if (error) return <div>{error}</div>;
     if (!userData) return <div>Данные профиля отсутствуют</div>;
 

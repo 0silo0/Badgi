@@ -11,6 +11,8 @@ import { ProfileModule } from './profile/profile.module';
 import { MulterModule } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { UsersModule } from './user/users.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -35,6 +37,8 @@ import { extname } from 'path';
       },
     }),
     ProfileModule,
+    UsersModule,
+    ChatModule,
   ],
   controllers: [AppController, FilesController],
   providers: [AppService],
