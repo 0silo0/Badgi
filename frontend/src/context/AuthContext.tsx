@@ -1,14 +1,23 @@
 // src/context/AuthContext.tsx
-import { createContext, useContext, useMemo, useState } from 'react';
+import { createContext, useContext, useMemo, useState, useEffect  } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient, { createApiClient } from '../api/client';
 
+type User = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  avatarUrl: string;
+};
+
 type AuthContextType = {
   isAuthenticated: boolean;
+  user: User | null;
   login: (credentials: { loginOrEmail: string; password: string; remember: boolean }) => Promise<void>;
   logout: () => Promise<void>;
   authError: string | null;
   setAuthError: (error: string | null) => void;
+  loadUser: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType>(null!);
@@ -21,6 +30,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const apiClient = useMemo(() => createApiClient(), []);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadUser();
+    }
+  }, []);
+
+  const loadUser = async () => {
+    try {
+      const response = await apiClient.get('/users/me');
+      setUser(response.data);
+    } catch (error) {
+      console.error('Failed to load user data:', error);
+      logout();
+    }
+  };
 
   const login = async ({ loginOrEmail, password, remember }: { 
     loginOrEmail: string; 
@@ -45,6 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       setIsAuthenticated(true);
+      await loadUser();
       navigate('/');
     } catch (error: any) {
       console.error('Login error:', error);
@@ -61,6 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem('accessToken');
       sessionStorage.removeItem('accessToken');
       setIsAuthenticated(false);
+      setUser(null);
       setIsLoggingOut(false);
       navigate('/login', { replace: true });
     }
@@ -68,11 +96,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ 
-      isAuthenticated, 
+      isAuthenticated,
+      user,
       login, 
       logout, 
       authError,
-      setAuthError 
+      setAuthError,
+      loadUser
     }}>
       {children}
     </AuthContext.Provider>

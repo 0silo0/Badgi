@@ -113,11 +113,11 @@
         text-align: center;
         color: #636e72;
         cursor: pointer;
-        text-decoration: underline;
         font-size: 0.9rem;
 
         &:hover {
           color: #2d3436;
+          text-decoration: underline;
         }
       }
 

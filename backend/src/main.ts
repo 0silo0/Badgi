@@ -5,6 +5,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { JwtService } from '@nestjs/jwt';
 import * as cookieParser from 'cookie-parser';
 import * as express from 'express';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -23,11 +24,13 @@ async function bootstrap() {
       'https://176.123.160.42:3100',
       'https://176.123.160.42:3101',
     ],
-    methods: ['GET', 'HEAD', 'PATCH', 'POST', 'PUT', 'DELETE'],
+    methods: ['GET', 'HEAD', 'PATCH', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
     credentials: true, // Позволяет отправлять cookies и авторизационные заголовки
     exposedHeaders: ['Authorization', 'Set-Cookie'],
   });
+
+  app.useWebSocketAdapter(new IoAdapter(app));
 
   const prismaService = app.get(PrismaService);
   await prismaService.enableShutdownHooks(app);
