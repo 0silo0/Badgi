@@ -103,7 +103,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         },
       };
 
-      this.server.to(`chat:${dto.chatId}`).emit('chat:message', responseMessage);
+      client.emit('chat:message', {
+        ...responseMessage,
+        id: dto.tempId,
+      });
+      client.to(`chat:${dto.chatId}`).emit('chat:message', responseMessage);
       this.logger.log(`Message attempt from ${client.data.userId}`);
       return { status: 'success' };
     } catch (e) {

@@ -12,6 +12,7 @@ export const useChat = (chatId: string | null) => {
   const [isConnected, setIsConnected] = useState(false);
   const apiClient = createApiClient();
   const socketRef = useRef<Socket | null>(null);
+  const pendingMessages = useRef<Map<string, Message>>(new Map());
 
   // Загрузка истории сообщений
   useEffect(() => {
@@ -29,25 +30,43 @@ export const useChat = (chatId: string | null) => {
     loadMessages();
   }, [chatId]);
 
-  const messageHandler = (newMessage: Message) => {
-    console.log('New message received:', newMessage);
+  const messageHandler = useCallback((newMessage: Message) => {
+    //console.log('New message received:', newMessage);
     
     setMessages(prev => {
-      // Если это наше сообщение (по content и времени), заменяем его
-      const existingIndex = prev.findIndex(m => 
-        m.content === newMessage.content && 
-        Math.abs(new Date(m.createdAt).getTime() - new Date(newMessage.createdAt).getTime()) < 1000
-      );
-      
-      if (existingIndex >= 0) {
-        const updated = [...prev];
-        updated[existingIndex] = newMessage;
-        return updated;
+      // Проверяем, что newMessage и его свойства существуют
+      if (!newMessage?.id || !newMessage?.account?.id) {
+        console.error('Invalid message format:', newMessage);
+        return prev;
+      }
+  
+      // Если это подтверждение временного сообщения
+      if (pendingMessages.current.has(newMessage.id)) {
+        pendingMessages.current.delete(newMessage.id);
+        return prev.map(msg => 
+          msg?.id === newMessage.id ? newMessage : msg
+        );
       }
       
+      // Если это наше сообщение (ищем по content и userId)
+      const isOurMessage = newMessage.account.id === userId && 
+        prev.some(msg => 
+          msg?.content === newMessage.content && 
+          msg?.account?.id === userId
+        );
+      
+      if (isOurMessage) {
+        return prev.map(msg => 
+          msg?.content === newMessage.content && 
+          msg?.account?.id === userId ? 
+            newMessage : msg
+        );
+      }
+      
+      // Если это новое сообщение от другого пользователя
       return [...prev, newMessage];
     });
-  };
+  }, [userId]);
 
   // WebSocket соединение
   useEffect(() => {
@@ -120,16 +139,23 @@ export const useChat = (chatId: string | null) => {
       }
     };
 
-    console.log(userId)
-
+    pendingMessages.current.set(tempId, tempMessage);
     setMessages(prev => [...prev, tempMessage]);
     
     try {
-      console.log('Sending message to chat:', chatId);
-      socketRef.current.emit('send_message', {chatId, content, tempId})
+      const response = await socketRef.current.emitWithAck('send_message', {
+        chatId, 
+        content, 
+        tempId
+      });
+      
+      if (response?.status !== 'success') {
+        throw new Error(response?.message || 'Failed to send message');
+      }
     } catch (error) {
       console.error('Failed to send message:', error);
       setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
+      pendingMessages.current.delete(tempId);
     }
   }, [chatId, userId, user]);
 
