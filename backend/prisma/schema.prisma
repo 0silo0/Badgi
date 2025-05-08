@@ -100,8 +100,8 @@ model Team {
   name        String
   description String?
   createdAt   DateTime  @default(now()) @map("createat")
-  createdBy String    @map("createBy")
-  createdRef   Account   @relation(fields: [createdBy], references: [primarykey])
+  createdBy String?    @map("createBy")
+  createdRef   Account?   @relation(fields: [createdBy], references: [primarykey])
   
   members     TeamMember[]
   projects    Project[]

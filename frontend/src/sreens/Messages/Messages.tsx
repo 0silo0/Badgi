@@ -115,8 +115,7 @@ export const Messages = () => {
         <FaArrowLeft />
       </button>
       <div className="recipient-info">
-        <div className="recipient-avatar">
-          {currentRecipient?.avatarUrl ? (
+        {currentRecipient?.avatarUrl ? (
             <img
               src={currentRecipient?.avatarUrl || '/default-avatar.png'}
               alt={currentRecipient?.firstName}
@@ -127,7 +126,6 @@ export const Messages = () => {
               {currentRecipient?.firstName[0]} {currentRecipient?.lastName[0]}
             </div>
           )}
-        </div>
         <div className="recipient-name">
           {currentRecipient?.firstName} {currentRecipient?.lastName}
         </div>

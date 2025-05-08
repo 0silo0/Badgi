@@ -8,8 +8,10 @@ import {
   FiHelpCircle
 } from 'react-icons/fi';
 import './Header.scss';
+import { useAuth } from '../../context/AuthContext';
 
 export default function Header() {
+  const { user: authUser } = useAuth();
   const handleAction = (actionName: string) => () => {
     console.log(`${actionName} clicked`);
   };
@@ -64,7 +66,19 @@ export default function Header() {
         <span className="label">Поддержка</span>
       </button>
       
-      <div className="avatar" />
+      <div className="avatar">
+        {authUser?.avatarUrl ? (
+            <img
+              src={authUser?.avatarUrl || '/default-avatar.png'}
+              alt={authUser?.firstName}
+              className="recipient-avatar"
+            />
+          ) : (
+            <div className="avatar-placeholder">
+              {authUser?.firstName[0]} {authUser?.lastName[0]}
+            </div>
+          )}
+      </div>
     </header>
   );
 }
