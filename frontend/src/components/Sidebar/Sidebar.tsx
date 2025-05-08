@@ -32,7 +32,7 @@ export default function Sidebar() {
     { path: '/profile', icon: <FiUser /> },
     { path: '/settings', icon: <FiSettings /> },
     { path: '/notifications', icon: <FiBell /> },
-    { path: '/documents', icon: <FiFileText /> },
+    { path: '/task', icon: <FiFileText /> },
     { path: '/calendar', icon: <FiCalendar /> },
     { path: '/messages', icon: <FiMessageSquare /> },
     { path: '/projects', icon: <FiBox /> },

@@ -12,7 +12,7 @@ import Header from './components/Header/Header';
 import Profile from './sreens/Profile/Profile';
 import Settings from './sreens/Settings/Settings';
 import Notifications from './sreens/Notifications/Notifications';
-import Documents from './sreens/Documents/Documents';
+import Task from './sreens/Task/Task';
 import Calendar from './sreens/Calendar/Calendar';
 import { Messages } from './sreens/Messages/Messages';
 import Projects from './sreens/Projects/Projects';
@@ -48,7 +48,7 @@ const AppRoutes = () => {
           <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/notifications" element={<Notifications />} />
-          <Route path="/documents" element={<Documents />} />
+          <Route path="/task" element={<Task />} />
           <Route path="/calendar" element={<Calendar />} />
           <Route path="/messages" element={<Messages />} />
           <Route path="/projects" element={<Projects />} />
