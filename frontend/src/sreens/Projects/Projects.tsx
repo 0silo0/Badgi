@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { FiSearch, FiFilter, FiPlus, FiMoreVertical } from 'react-icons/fi';
 import { Project, ParticipantsAvatarsProps, StatusBadgeProps, ProjectMember, TeamMember } from '../../types/project';
 import { ProjectEditModal } from './ProjectEditModal';
 import { ProjectsApi } from '../../api/projects';
 import './styles/main.scss';
+import { useAuth } from '../../context/AuthContext';
 
 const ParticipantsAvatars = ({ members }: { members: Array<ProjectMember | TeamMember> }) => {
   const [showAll, setShowAll] = useState(false);
@@ -89,9 +90,12 @@ const StatusBadge = ({ status }: StatusBadgeProps) => {
   );
 };
 
-const ActionsMenu = ({ onEdit, onDelete }: {
-  onEdit: () => void;
-  onDelete: () => Promise<void>;
+const ActionsMenu = ({ onEdit, onDelete, project, currentUserId, onInfo }: {
+    onEdit: () => void;
+    onDelete: () => Promise<void>;
+    onInfo: () => void;
+    project: Project;
+    currentUserId?: string;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -128,6 +132,7 @@ const ActionsMenu = ({ onEdit, onDelete }: {
       
       {isOpen && (
       <div className="menu-dropdown">
+        {project.createdBy === currentUserId && (
           <button 
             className="menu-item" 
             onClick={(e) => {
@@ -138,14 +143,28 @@ const ActionsMenu = ({ onEdit, onDelete }: {
           >
             Редактировать
           </button>
-        <button className="menu-item">Информация</button>
-        <button 
-          className="menu-item delete" 
-          onClick={handleDelete}
-          disabled={deleting}
-        >
-          {deleting ? 'Удаление...' : 'Удалить'}
-        </button>
+        )}
+        {project.createdBy !== currentUserId && (
+          <button 
+            className="menu-item" 
+            onClick={(e) => {
+              e.stopPropagation();
+              onInfo();
+              setIsOpen(false);
+            }}
+          >
+            Информация
+          </button>
+        )}
+        {project.createdBy === currentUserId && (
+          <button 
+            className="menu-item delete" 
+            onClick={handleDelete}
+            disabled={deleting}
+          >
+            {deleting ? 'Удаление...' : 'Удалить'}
+          </button>
+        )}
       </div>
       )}
     </div>
@@ -168,13 +187,22 @@ export default function Projects() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState<'my' | 'member'>('my');
+  const [myProjects, setMyProjects] = useState<Project[]>([]);
+  const [memberProjects, setMemberProjects] = useState<Project[]>([]);
+  const { user: authUser } = useAuth();
+  const [selectedProjectInfo, setSelectedProjectInfo] = useState<Project | null>(null);
 
   useEffect(() => {
     const loadProjects = async () => {
       try {
-        const data = await ProjectsApi.getAllProjects();
-        console.log(data)
-        setProjects(data);
+        const [my, member] = await Promise.all([
+          ProjectsApi.getAllProjects(),
+          ProjectsApi.getAllUserProjects()
+        ]);
+        setMyProjects(my);
+        setMemberProjects(member);
+        setError('');
       } catch (err) {
         setError('Ошибка загрузки проектов');
       } finally {
@@ -184,21 +212,34 @@ export default function Projects() {
     loadProjects();
   }, []);
 
+  const allProjects = useMemo(() => {
+    const combined = [...myProjects, ...memberProjects];
+    // Удаляем дубликаты по primarykey
+    return combined.filter(
+      (project, index, self) =>
+        index === self.findIndex((p) => p.primarykey === project.primarykey)
+    );
+  }, [myProjects, memberProjects]);
+
   const [filters, setFilters] = useState({
     search: '',
     status: '' as '' | 'В работе' | 'Завершен' | 'Приостановлен',
     showFilters: false
   });
 
-  const filteredProjects = projects.filter(project => {
-    // Фильтр по названию
-    const nameMatch = project.name.toLowerCase().includes(filters.search.toLowerCase());
-    
-    // Фильтр по статусу
-    const statusMatch = filters.status ? project.status === filters.status : true;
-    
-    return nameMatch && statusMatch;
-  });
+  const filteredProjects = useMemo(() => {
+    return allProjects.filter(project => {
+      const baseFilter = 
+        project.name.toLowerCase().includes(filters.search.toLowerCase()) &&
+        (filters.status ? project.status === filters.status : true);
+
+      if (activeTab === 'my') {
+        return baseFilter && myProjects.some(p => p.primarykey === project.primarykey);
+      }
+      return baseFilter && 
+        memberProjects.some(p => p.primarykey === project.primarykey);
+    });
+  }, [allProjects, filters, activeTab, myProjects, memberProjects]);
 
   const handleCreateClick = () => {
     setModalState({
@@ -261,6 +302,20 @@ export default function Projects() {
   return (
     <div className="projects-container">
       <div className="projects-table-container">
+        <div className="tabs-container">
+          <button 
+            className={`tab-button ${activeTab === 'my' ? 'active' : ''}`}
+            onClick={() => setActiveTab('my')}
+          >
+            Мои проекты
+          </button>
+          <button 
+            className={`tab-button ${activeTab === 'member' ? 'active' : ''}`}
+            onClick={() => setActiveTab('member')}
+          >
+            Участвую
+          </button>
+        </div>
         <div className="search-filter-container">
           <div className="search-input">
             <input
@@ -346,6 +401,7 @@ export default function Projects() {
                 setModalState({...modalState, isOpen: false});
               }}
               isEditing={modalState.isEditing}
+              isCreator={true}
             />
           )}
 
@@ -391,8 +447,15 @@ export default function Projects() {
                 </td>
                 <td data-label="Действия">
                 <ActionsMenu 
-                  onEdit={() => { setSelectedProject(project); console.log('fasdfasdf ', project) }}
+                  onEdit={() => {
+                    if (project.createdBy === authUser?.id) {
+                      setSelectedProject(project);
+                    }
+                  }}
+                  onInfo={() => setSelectedProject(project)}
                   onDelete={() => handleDeleteProject(project.primarykey)}
+                  project={project}
+                  currentUserId={authUser?.id}
                 />
                 </td>
               </tr>
@@ -410,7 +473,8 @@ export default function Projects() {
               ));
               setSelectedProject(null);
             }}
-            isEditing={true}
+            isEditing={selectedProject.createdBy === authUser?.id}
+            isCreator={selectedProject.createdBy === authUser?.id}
           />
         )}
       </div>

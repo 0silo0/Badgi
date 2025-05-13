@@ -6,6 +6,10 @@ $text-color: #2d3748;
   position: relative;
   z-index: 1000;
 
+  .hidden {
+    display: none;
+  }
+
   &__content {
     position: fixed;
     top: 50%;

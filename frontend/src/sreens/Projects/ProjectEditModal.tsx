@@ -12,13 +12,15 @@ interface ProjectEditModalProps {
   onClose: () => void;
   onSave: (project: Project) => void;
   isEditing?: boolean;
+  isCreator?: boolean;
 }
 
 export const ProjectEditModal = ({ 
   project,
   onClose,
   isEditing,
-  onSave
+  onSave,
+  isCreator = false
 }: ProjectEditModalProps) => {
   const initialProject: Project = project || {
     primarykey: '',
@@ -45,6 +47,8 @@ export const ProjectEditModal = ({
   const [selectedTeamRole, setSelectedTeamRole] = useState<teamRoles>(teamRoles.MEMBER);
   const apiClient = createApiClient();
   const { user: authUser } = useAuth();
+
+  const isFieldDisabled = !isEditing ? !isCreator : false;
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
@@ -252,7 +256,12 @@ return (
       
       <div className="edit-modal__content">
         <h2 className="edit-modal__header">
-          {isEditing ? 'Редактирование проекта' : 'Создание нового проекта'}
+          {!isFieldDisabled ? (
+            isEditing ? 'Редактирование проекта' : 'Создание нового проекта'
+          ) : (
+            'Просмотр проекта'
+          )}
+          
         </h2>
         
         <div className="edit-modal__grid">
@@ -296,11 +305,13 @@ return (
                   onChange={(e) => setForm({...form, name: e.target.value})}
                   className="edit-modal__title-input"
                   placeholder="Название проекта"
+                  disabled={isFieldDisabled}
                 />
                 <select
                   value={form.status}
                   onChange={(e) => setForm({...form, status: e.target.value as any})}
                   className="edit-modal__status-select"
+                  disabled={isFieldDisabled}
                 >
                   {['В работе', 'Завершен', 'Приостановлен'].map(status => (
                     <option key={status} value={status}>{status}</option>
@@ -314,12 +325,14 @@ return (
               type="date"
               value={form.startDate.split('T')[0]}
               onChange={handleStartDateChange}
+              disabled={isFieldDisabled}
             />
               <span>—</span>
             <input
               type="date"
               value={form.endDate.split('T')[0]}
               onChange={handleEndDateChange}
+              disabled={isFieldDisabled}
             />
             </div>
 
@@ -330,6 +343,7 @@ return (
                 onChange={(e) => setForm({...form, description: e.target.value})}
                 className="edit-modal__description-textarea"
                 placeholder="Добавьте описание проекта..."
+                disabled={isFieldDisabled}
               />
             </div>
 
@@ -341,6 +355,7 @@ return (
                   onChange={(e) => setNewTeamName(e.target.value)}
                   placeholder="Название новой команды"
                   className="edit-modal__team-input"
+                  disabled={isFieldDisabled}
                 />
                 <button 
                   onClick={() => {
@@ -361,6 +376,7 @@ return (
                     }
                   }}
                   className="edit-modal__add-team-button"
+                  disabled={isFieldDisabled}
                 >
                   Добавить команду
                 </button>
@@ -372,8 +388,9 @@ return (
                     <div className="team-header">
                       <h4 className="team-name">{team.name}</h4>
                       <button 
-                        className="team-manage-button"
+                        className={`team-manage-button ${isFieldDisabled ? 'hidden' : ''}`}
                         onClick={() => { setSelectedTeam(team); console.log(team)} }
+                        disabled={isFieldDisabled}
                       >
                         Управление
                       </button>
@@ -410,6 +427,7 @@ return (
                     setSelectedTeam(updatedTeam);
                   }}
                   className="team-name-edit"
+                  disabled={isFieldDisabled}
                 />
                 
                 <div className="available-members">
@@ -431,6 +449,7 @@ return (
                           className="add-button"
                           onClick={() => handleAddTeamMember(projectMember.account)}
                           title="Добавить в команду"
+                          disabled={isFieldDisabled}
                         >
                           +
                         </button>
@@ -473,6 +492,7 @@ return (
                           setForm({ ...form, teams: updatedTeams });
                           setSelectedTeam(updatedTeam);
                         }}
+                        disabled={isFieldDisabled}
                       >
                         ×
                       </button>
@@ -493,7 +513,7 @@ return (
           {/* Правый блок - Участники */}
           <div className="edit-modal__right-block">
             <div className="members-management">
-              <div className="search-section">
+              <div className={`search-section ${isFieldDisabled ? 'hidden' : ''}`}>
                 <div className="search-input-container">
                   <input
                     type="text"
@@ -504,8 +524,9 @@ return (
                     }}
                     onKeyUp={(e) => e.key === 'Enter' && handleSearch()}
                     placeholder="Поиск по участникам проекта"
+                    disabled={isFieldDisabled}
                   />
-                  <button onClick={handleSearch} disabled={isSearching}>
+                  <button onClick={handleSearch} disabled={isSearching || isFieldDisabled}>
                     {isSearching ? 'Поиск...' : 'Найти'}
                   </button>
                 </div>
@@ -563,6 +584,7 @@ return (
                           value={member.role.name}
                           onChange={(e) => updateProjectMemberRole(member.primarykey, e.target.value as projectRoles)}
                           className="role-select"
+                          disabled={isFieldDisabled}
                         >
                           {Object.values(projectRoles).map(role => (
                             <option key={role} value={role}>{role}</option>
@@ -570,7 +592,7 @@ return (
                         </select>
                       </div>
                     </div>
-                  {member.accountId !== authUser?.id ? (
+                  {member.accountId !== authUser?.id && !isFieldDisabled ? (
                     <button 
                       className="remove-button"
                       onClick={() => {
@@ -600,7 +622,7 @@ return (
                       ×
                     </button>
                     ) : (
-                      <span>Вы</span>
+                      <span>{isFieldDisabled ? '' : 'Вы'}</span>
                     )}
                   </div>
                 ))}

@@ -7,6 +7,11 @@ export const ProjectsApi = {
     return response.data.map((p: any) => this.mapProject(p));
   },
 
+  async getAllUserProjects(): Promise<Project[]> {
+    const response = await apiClient.get('/projects/my-memberships');
+    return response.data.map((p: any) => this.mapProject(p));
+  },
+
   async getProjectById(id: string): Promise<Project> {
     const response = await apiClient.get(`/projects/${id}`);
     return this.mapProject(response.data);

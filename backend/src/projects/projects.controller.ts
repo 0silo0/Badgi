@@ -34,10 +34,11 @@ export class ProjectsController {
     return this.projectsService.getUserProjects(userId);
   }
 
-  @Get(':id')
-  async getProjectDetails(@Req() req: Request, @Param('id') projectId: string) {
+  @Get('/my-memberships')
+  async getProjectsWhereMember(@Req() req: Request) {
     const userId = this.extractUserId(req);
-    return this.projectsService.getProjectWithAuthCheck(userId, projectId);
+    console.log(userId)
+    return this.projectsService.getProjectsWhereMember(userId);
   }
 
   @Post()

@@ -75,6 +75,51 @@ export class ProjectsService {
     });
   }
 
+  async getProjectsWhereMember(userId: string) {
+    return this.prisma.project.findMany({
+      where: {
+        ProjectMember: {
+          some: {
+            accountId: userId,
+          },
+        },
+      },
+      include: {
+        ProjectMember: {
+          include: {
+            account: {
+              select: {
+                primarykey: true,
+                avatarUrl: true,
+                firstName: true,
+                lastName: true,
+                login: true,
+              },
+            },
+            role: true,
+          },
+        },
+        teams: {
+          include: {
+            members: {
+              include: {
+                account: {
+                  select: {
+                    email: true,
+                    login: true,
+                    firstName: true,
+                    lastName: true,
+                    avatarUrl: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
   async getProjectWithAuthCheck(userId: string, projectId: string) {
     const project = await this.prisma.project.findUnique({
       where: { primarykey: projectId },
