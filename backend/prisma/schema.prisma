@@ -37,7 +37,6 @@ model Account {
   createdProjects   Project[]
   assignedTasks     Task[] @relation("taskAssignee")
   createdTasks      Task[] @relation("taskAuthor")
-  teamMembers       TeamMember[]
   taskComments      TaskComment[]
   taskAttachments   TaskAttachment[]
   chatMembers       ChatMember[]
@@ -52,6 +51,7 @@ model Account {
   @@index([login], name: "idx_accounts_login") // Индекс для login
   accountId ProjectMember[] @relation("accountId")
   assignedById ProjectMember[] @relation("assignedById")
+  teamMember TeamMember[] @relation("TeamMemberAccount")
 }
 
 model Role {
@@ -81,14 +81,14 @@ model ProjectRole {
 
 model ProjectMember {
   primarykey    String @id @default(uuid())
-  projectId String
+  projectId String  @map("projectid")
   project   Project @relation(fields: [projectId], references: [primarykey])
-  accountId String
+  accountId String  @map("accountid")
   account   Account @relation("accountId", fields: [accountId], references: [primarykey])
-  roleId    String
+  roleId    String  @map("roleid")
   role      ProjectRole @relation(fields: [roleId], references: [primarykey])
   assignedAt    DateTime @default(now()) @map("assignedat")
-  assignedById  String?  // Кто назначил
+  assignedById  String?  @map("assignedbyid")
   assignedBy    Account? @relation("assignedById", fields: [assignedById], references: [primarykey])
   
   @@unique([projectId, accountId])
@@ -99,12 +99,13 @@ model Team {
   primarykey          String    @id @default(uuid())
   name        String
   description String?
+  project  String // Привязка к проекту
+  projectRef    Project @relation(fields: [project], references: [primarykey])
   createdAt   DateTime  @default(now()) @map("createat")
-  createdBy String?    @map("createBy")
+  createdBy String?    @map("createby")
   createdRef   Account?   @relation(fields: [createdBy], references: [primarykey])
   
   members     TeamMember[]
-  projects    Project[]
 
   @@map("teams")
 }
@@ -114,7 +115,7 @@ model TeamMember {
   teamId    String        @map("team")
   team      Team          @relation(fields: [teamId], references: [primarykey])
   accountId    String        @map("accountid")
-  account      Account       @relation(fields: [accountId], references: [primarykey])
+  account      Account       @relation("TeamMemberAccount", fields: [accountId], references: [primarykey])
   role      String
   joinedAt  DateTime      @default(now()) @map("joinedat")
 
@@ -126,13 +127,15 @@ model Project {
   name        String
   description String?
   createdAt   DateTime  @default(now()) @map("createdat")
+  startDate   DateTime  @default(now()) @map("startdate")
+  endDate     DateTime  @default(now()) @map("enddate")
   createdBy String    @map("createby")
   createdRef   Account   @relation(fields: [createdBy], references: [primarykey])
-  team      String    @map("team")
-  teamRef        Team      @relation(fields: [team], references: [primarykey])
   status      String?
+  logoUrl     String? @map("logourl")
   
   tasks       Task[]
+  teams       Team[]
 
   @@map("projects")
   ProjectMember ProjectMember[]

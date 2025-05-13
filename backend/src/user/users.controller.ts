@@ -63,7 +63,7 @@ export class UsersController {
     });
 
     return users.map((user) => ({
-      id: user.primarykey,
+      primarykey: user.primarykey,
       login: user.login,
       email: user.email,
       firstName: user.firstName,

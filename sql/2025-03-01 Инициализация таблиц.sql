@@ -35,6 +35,7 @@ CREATE TABLE teams (
     primarykey UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
     description TEXT,
+    project UUID NOT NULL REFERENCES projects(primarykey)
     createat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     createby UUID NOT NULL REFERENCES accounts(primarykey)
 );
@@ -58,8 +59,8 @@ CREATE TABLE projects (
     description TEXT,
     createdat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     createby UUID NOT NULL REFERENCES accounts(primarykey),
-    team UUID NOT NULL REFERENCES teams(primarykey) ON DELETE CASCADE,
-    status VARCHAR(255)
+    status VARCHAR(255),
+    logoUrl TEXT NULL
 );
 
 CREATE INDEX idx_projects_team ON projects(team);

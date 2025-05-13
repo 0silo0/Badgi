@@ -13,6 +13,7 @@ import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { UsersModule } from './user/users.module';
 import { ChatModule } from './chat/chat.module';
+import { ProjectsModule } from './projects/projects.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { ChatModule } from './chat/chat.module';
     ProfileModule,
     UsersModule,
     ChatModule,
+    ProjectsModule,
   ],
   controllers: [AppController, FilesController],
   providers: [AppService],
