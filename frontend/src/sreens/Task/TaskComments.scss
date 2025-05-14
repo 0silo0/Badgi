@@ -17,12 +17,13 @@
       max-height: 1000px;
       min-height: 200px;
       overflow-y: auto;
+      scrollbar-width: none;
   
       .comment-item {
         padding: 15px 0;
         border-bottom: 1px solid #f0f0f0;
         height: 130px ;
-        overflow: hidden;
+        //overflow: hidden;
         z-index: 100;
   
         &:last-child {
