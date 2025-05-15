@@ -3,19 +3,7 @@ import { format, startOfWeek, addDays, isSameDay } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import Event from '../Event/Event';
 import './WeekView.scss';
-
-interface CalendarEvent {
-    id: string;
-    title: string;
-    start: Date;
-    end: Date;
-    type: string;
-    color: string;
-    description?: string;
-    priority?: string;
-    dueDate?: Date;
-    attendees?: string[];
-}
+import { CalendarEvent } from '../../../types/calendar';
 
 interface WeekViewProps {
   currentDate: Date;

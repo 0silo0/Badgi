@@ -2,23 +2,13 @@ import React from 'react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import './EventDetails.scss';
+import { CalendarEvent, Attendee } from '../../../types/calendar';
 
 interface EventDetailsProps {
-  event: {
-    id: string;
-    title: string;
-    start: Date;
-    end: Date;
-    type: string;
-    color: string;
-    description?: string;
-    priority?: string;
-    dueDate?: Date;
-    attendees?: string[];
-  };
+  event: CalendarEvent;
   isOpen: boolean;
   onClose: () => void;
-  onEdit: () => void;
+  onEdit: (event: CalendarEvent) => void;
   onDelete: () => void;
 }
 
@@ -66,10 +56,27 @@ const EventDetails: React.FC<EventDetailsProps> = ({
               <span className="value">{event.priority}</span>
             </div>
           )}
-          {event.attendees && (
+          {event.attendees && event.attendees.length > 0 && (
             <div className="info-row">
               <span className="label">Участники:</span>
-              <span className="value">{event.attendees.join(', ')}</span>
+              <div className="attendees-list">
+                {event.attendees.map(attendee => (
+                  <div key={attendee.primarykey} className="attendee">
+                    {attendee.avatarUrl && (
+                      <img 
+                        src={attendee.avatarUrl} 
+                        alt={attendee.login} 
+                        className="attendee-avatar"
+                      />
+                    )}
+                    <span className="attendee-name">
+                      {attendee.firstName || attendee.lastName 
+                        ? `${attendee.firstName} ${attendee.lastName}`
+                        : attendee.login}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -82,7 +89,10 @@ const EventDetails: React.FC<EventDetailsProps> = ({
             <button className="cancel-btn" onClick={onClose}>
               Закрыть
             </button>
-            <button className="submit-btn" onClick={onEdit}>
+            <button 
+              className="submit-btn" 
+              onClick={() => onEdit(event)}
+            >
               Редактировать
             </button>
           </div>

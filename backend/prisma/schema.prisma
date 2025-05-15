@@ -52,6 +52,8 @@ model Account {
   accountId ProjectMember[] @relation("accountId")
   assignedById ProjectMember[] @relation("assignedById")
   teamMember TeamMember[] @relation("TeamMemberAccount")
+  attendeesCalendar attendeesCalendar[] @relation("attendeesCalendar")
+  Calendar Calendar[] @relation("calendar")
 }
 
 model Role {
@@ -300,6 +302,35 @@ model ReadMessage {
 
   @@id([message, account])
   @@map("read_message")
+}
+
+model Calendar {
+  primarykey    String    @id @default(uuid())
+  title         String
+  start   DateTime?  @default(now())
+  end     DateTime?
+  type    String
+  color   String
+  description String?
+  dueDate DateTime?  @map("duedate")
+  priority  String?
+  accountId     String     @map("accountid")
+  account       Account    @relation("calendar", fields: [accountId], references: [primarykey])
+
+
+  attendeesCalendar attendeesCalendar[]
+  @@map("calendar")
+}
+
+model attendeesCalendar {
+  primarykey    String    @id @default(uuid())
+  calendarId    String    @map("calendarid")
+  calendar      Calendar @relation(fields: [calendarId], references: [primarykey])
+  accountId     String    @map("accountid")
+  account       Account  @relation("attendeesCalendar", fields: [accountId], references: [primarykey])
+
+
+  @@map("attendeescalendar")
 }
 
 model AppLog {

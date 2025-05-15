@@ -2,19 +2,7 @@ import React from 'react';
 import { format, startOfWeek, addDays, startOfMonth, endOfMonth, endOfWeek, isSameMonth, isSameDay } from 'date-fns';
 import Event from '../Event/Event';
 import './MonthView.scss';
-
-interface CalendarEvent {
-    id: string;
-    title: string;
-    start: Date;
-    end: Date;
-    type: string;
-    color: string;
-    description?: string;
-    priority?: string;
-    dueDate?: Date;
-    attendees?: string[];
-}
+import { CalendarEvent } from '../../../types/calendar';
 
 interface MonthViewProps {
     currentDate: Date;

@@ -3,19 +3,8 @@ import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { MdTask, MdEvent, MdPeople, MdNotifications, MdExpandMore } from 'react-icons/md';
 import './Event.scss';
+import { CalendarEvent, Attendee } from '../../../types/calendar';
 
-interface CalendarEvent {
-    id: string;
-    title: string;
-    start: Date;
-    end: Date;
-    type: string;
-    color: string;
-    description?: string;
-    priority?: string;
-    dueDate?: Date;
-    attendees?: string[];
-}
 
 interface EventProps {
   event: CalendarEvent;
@@ -153,10 +142,26 @@ const Event: React.FC<EventProps> = ({ event, showTime = true, isCompact = false
                 {event.type === 'meeting' && event.attendees && event.attendees.length > 0 && (
                   <div className="detail-row">
                     <span className="detail-label">Участники:</span>
-                    <span className="detail-value">
-                      {event.attendees.slice(0, 3).join(', ')}
-                      {event.attendees.length > 3 && ` +${event.attendees.length - 3}`}
-                    </span>
+                    <div className="attendees-preview">
+                      {event.attendees.slice(0, 3).map(attendee => (
+                        <div key={attendee.primarykey} className="attendee-badge">
+                          {attendee.avatarUrl ? (
+                            <img 
+                              src={attendee.avatarUrl} 
+                              alt={attendee.login} 
+                              className="avatar-xs"
+                            />
+                          ) : (
+                            <div className="avatar-placeholder">
+                              {attendee.login.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      {event.attendees.length > 3 && (
+                        <div className="more-attendees">+{event.attendees.length - 3}</div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
