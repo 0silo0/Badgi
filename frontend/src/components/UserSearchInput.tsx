@@ -7,12 +7,14 @@ interface UserSearchInputProps {
   selectedUsers: User[];
   onSelect: (user: User) => void;
   onRemove: (userId: string) => void;
+  showInput?: boolean;
 }
 
 const UserSearchInput: React.FC<UserSearchInputProps> = ({
   selectedUsers,
   onSelect,
-  onRemove
+  onRemove,
+  showInput = true
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
@@ -52,15 +54,16 @@ const UserSearchInput: React.FC<UserSearchInputProps> = ({
 
   return (
     <div className="user-search-container" ref={dropdownRef}>
-      {/* Поле ввода для поиска */}
-      <input
-        type="text"
-        placeholder="Начните вводить имя или логин..."
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        onFocus={() => searchQuery.length > 2 && setIsDropdownOpen(true)}
-        className="user-search-input"
-      />
+      {showInput && (
+        <input
+          type="text"
+          placeholder="Начните вводить имя или логин..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onFocus={() => searchQuery.length > 2 && setIsDropdownOpen(true)}
+          className="user-search-input"
+        />
+      )}
 
       {/* Выпадающий список с результатами поиска */}
       {isDropdownOpen && searchResults.length > 0 && (

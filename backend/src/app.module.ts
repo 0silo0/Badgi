@@ -15,6 +15,7 @@ import { UsersModule } from './user/users.module';
 import { ChatModule } from './chat/chat.module';
 import { ProjectsModule } from './projects/projects.module';
 import { CalendarModule } from './calendar/calendar.module';
+import { TasksModule } from './tasks/tasks.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { CalendarModule } from './calendar/calendar.module';
     ChatModule,
     ProjectsModule,
     CalendarModule,
+    TasksModule,
   ],
   controllers: [AppController, FilesController],
   providers: [AppService],

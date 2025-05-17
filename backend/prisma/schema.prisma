@@ -54,6 +54,8 @@ model Account {
   teamMember TeamMember[] @relation("TeamMemberAccount")
   attendeesCalendar attendeesCalendar[] @relation("attendeesCalendar")
   Calendar Calendar[] @relation("calendar")
+  CommentAttachment CommentAttachment[] @relation("commentAttachment")
+  File File[]
 }
 
 model Role {
@@ -145,19 +147,25 @@ model Project {
 
 model Task {
   primarykey           String        @id @default(uuid())
+  number       Int
   title        String
   description  String?
-  project    String        @map("project")
+  type         String
+  color        String?
+  project    String        @map("projectid")
   projectRef      Project       @relation(fields: [project], references: [primarykey])
-  createdBy  String        @map("createby")
+  createdBy  String        @map("createdby")
   createdByRef    Account       @relation("taskAuthor", fields: [createdBy], references: [primarykey])
   assignedTo String?       @map("assignedto")
   assignedToRef   Account?      @relation("taskAssignee", fields: [assignedTo], references: [primarykey])
   status       String
   priority     String?
+  startDate       DateTime? @map("startdate")
+  endDate         DateTime? @map("enddate")
   dueDate      DateTime?     @map("duedate")
-  createdAt    DateTime      @default(now()) @map("createat")
-  updatedAt    DateTime      @default(now()) @updatedAt @map("updateat")
+  stage        String?
+  createdAt    DateTime      @default(now()) @map("createdat")
+  updatedAt    DateTime      @default(now()) @updatedAt @map("updatedat")
   
   comments     TaskComment[]
   attachments  TaskAttachment[]
@@ -170,25 +178,40 @@ model TaskComment {
   primarykey        String    @id @default(uuid())
   taskId    String    @map("taskid")
   task      Task      @relation(fields: [taskId], references: [primarykey])
-  account    String    @map("account")
-  accountRef      Account   @relation(fields: [account], references: [primarykey])
+  accountId String    @map("accountid")
+  account   Account   @relation(fields: [accountId], references: [primarykey])
   comment   String
   createdAt DateTime  @default(now()) @map("createdat")
   updatedAt DateTime  @default(now()) @updatedAt @map("updatedat")
 
   @@map("taskcomments")
+  CommentAttachment CommentAttachment[]
 }
 
 model TaskAttachment {
   primarykey          String    @id @default(uuid())
-  taskId      String    @map("task")
+  taskId      String    @map("taskid")
   task        Task      @relation(fields: [taskId], references: [primarykey])
-  file        String
+  fileId      String    @map("fileid")
+  file        File      @relation(fields: [fileId], references: [primarykey])
   uploadedBy String   @map("uploadedby")
   uploadedRef  Account   @relation(fields: [uploadedBy], references: [primarykey])
-  uploadedAt  DateTime  @default(now()) @map("uploadedtat")
+  uploadedAt  DateTime  @default(now()) @map("uploadedat")
 
   @@map("taskattachments")
+}
+
+model CommentAttachment {
+  primarykey          String    @id @default(uuid())
+  commentId   String    @map("commentid")
+  comment     TaskComment @relation(fields: [commentId], references: [primarykey])
+  fileId      String    @map("fileid")
+  file        File      @relation(fields: [fileId], references: [primarykey])
+  uploadedById String   @map("uploadedby")
+  uploadedBy  Account   @relation("commentAttachment", fields: [uploadedById], references: [primarykey])
+  uploadedAt  DateTime  @default(now()) @map("uploadedat")
+  
+  @@map("commentattachments")
 }
 
 model Tag {
@@ -202,13 +225,32 @@ model Tag {
 }
 
 model TaskTag {
-  primarykey      String    @id @default(uuid())
-  task  String    @map("task")
-  taskRef    Task      @relation(fields: [task], references: [primarykey])
-  tag   String    @map("tag")
-  tagRef     Tag       @relation(fields: [tag], references: [primarykey])
+  id      String  @id @default(uuid())
+  taskId  String  @map("task_id")
+  task    Task    @relation(fields: [taskId], references: [primarykey])
+  tagId   String  @map("tag_id")
+  tag     Tag     @relation(fields: [tagId], references: [primarykey])
 
+  @@unique([taskId, tagId])
   @@map("tasktags")
+}
+
+model File {
+  primarykey String    @id @default(uuid())
+  filename    String
+  path        String
+  size        BigInt
+  mimeType    String    @map("mime_type")
+  uploadedById String   @map("uploaded_by")
+  uploadedBy  Account   @relation(fields: [uploadedById], references: [primarykey])
+  uploadedAt  DateTime  @default(now()) @map("uploaded_at")
+  isDeleted   Boolean   @default(false) @map("is_deleted")
+
+  @@map("files")
+  ChatAttachment ChatAttachment[]
+  TaskAttachment TaskAttachment[]
+  CommentAttachment CommentAttachment[]
+  Account Account[] @relation("userRef")
 }
 
 model UserSettings {
@@ -220,20 +262,6 @@ model UserSettings {
   isNotifications Boolean   @default(true) @map("isnotifications")
 
   @@map("usersettings")
-}
-
-model File {
-  primarykey String    @id @default(uuid())
-  value     String
-  type      String
-  userId    String?   @map("userid")
-  createdAt DateTime  @default(now()) @map("createdat")
-  updatedAt DateTime  @default(now()) @updatedAt @map("updatedat")
-
-  userRef    Account?  @relation("userRef", fields: [userId], references: [primarykey])
-
-  @@map("file")
-  ChatAttachment ChatAttachment[]
 }
 
 model Chat {

@@ -21,7 +21,6 @@ export class S3Service {
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
   ) {
-    // Убедимся, что все обязательные переменные окружения существуют
     const endpoint = this.getRequiredConfig('AWS_ENDPOINT');
     const region = this.getRequiredConfig('AWS_REGION');
     const accessKeyId = this.getRequiredConfig('AWS_ACCESS_KEY_ID');
@@ -31,21 +30,17 @@ export class S3Service {
     this.s3 = new S3Client({
       endpoint,
       region,
-      credentials: {
-        accessKeyId,
-        secretAccessKey,
-      },
-      forcePathStyle: true, // важно для Cloud.ru
+      credentials: { accessKeyId, secretAccessKey },
+      forcePathStyle: true,
     });
   }
 
   private getRequiredConfig(key: string): string {
     const value = this.configService.get<string>(key);
-    if (!value) {
-      throw new Error(`Missing required config: ${key}`);
-    }
+    if (!value) throw new Error(`Missing required config: ${key}`);
     return value;
   }
+
   private generateUniqueFileName(originalName: string): string {
     const timestamp = Date.now();
     const randomString = Math.random().toString(36).substring(2, 8);
@@ -53,10 +48,7 @@ export class S3Service {
   }
 
   async generatePresignedUrl(key: string, expiresIn = 604800): Promise<string> {
-    const command = new GetObjectCommand({
-      Bucket: this.bucketName,
-      Key: key,
-    });
+    const command = new GetObjectCommand({ Bucket: this.bucketName, Key: key });
     return getSignedUrl(this.s3, command, { expiresIn });
   }
 
@@ -66,21 +58,37 @@ export class S3Service {
     userId?: string,
     fileType?: string,
   ) {
-    // Загружаем файл в S3
-    const { url, key } = await this.uploadFile(file, folder, userId, fileType);
+    if (!userId) throw new Error('User ID is required for file upload');
 
-    // Сохраняем информацию в базу данных
+    const uniqueFileName = this.generateUniqueFileName(file.originalname);
+    const key = `badgi/${folder}/${uniqueFileName}`;
+
+    await this.s3.send(
+      new PutObjectCommand({
+        Bucket: this.bucketName,
+        Key: key,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+      }),
+    );
+
+    console.log(file)
+
     const dbFile = await this.prisma.file.create({
       data: {
-        value: url, // Сохраняем подписанный URL
-        type: fileType || file.mimetype,
-        userId: userId, // Привязываем к пользователю
+        filename: file.originalname,
+        path: await this.generatePresignedUrl(key),
+        size: BigInt(file.size),
+        mimeType: fileType || file.mimetype,
+        uploadedById: userId,
+        isDeleted: false,
       },
     });
 
     return {
       ...dbFile,
-      s3Key: key, // Возвращаем также ключ S3 для управления файлом
+      url: await this.generatePresignedUrl(key),
+      s3Key: key,
     };
   }
 
@@ -88,37 +96,88 @@ export class S3Service {
     file: Express.Multer.File,
     subfolder: string,
     accountId?: string,
-    _fileType?: string,
-  ): Promise<{ url: string; key: string }> {
-    console.log(`Uploading file to badgi/${subfolder}`);
-    const uniqueFileName = this.generateUniqueFileName(file.originalname);
-    const key = `badgi/${subfolder}/${uniqueFileName}`;
-
-    const uploadCommand = new PutObjectCommand({
-      Bucket: this.bucketName,
-      Key: key,
-      Body: file.buffer,
-      ContentType: file.mimetype,
-    });
-
-    await this.s3.send(uploadCommand);
+    fileType?: string,
+  ): Promise<{ primarykey: string; url: string; key: string }> {
+    const result = await this.uploadAndSaveFile(
+      file,
+      subfolder,
+      accountId,
+      fileType,
+    );
 
     if (accountId && subfolder === 'avatars') {
-      await this.updateUserAvatar(accountId, key);
+      await this.updateUserAvatar(accountId, result.s3Key);
     }
 
+    return {
+      primarykey: result.primarykey,
+      url: result.url,
+      key: result.s3Key,
+    };
+  }
+
+  async deleteFileWithDbRecord(key: string) {
+    const fileRecord = await this.prisma.file.findFirst({
+      where: { path: key },
+      include: {
+        TaskAttachment: true,
+        CommentAttachment: true,
+        ChatAttachment: true,
+      },
+    });
+
+    if (fileRecord) {
+      await this.prisma.$transaction([
+        ...fileRecord.TaskAttachment.map(a => 
+          this.prisma.taskAttachment.delete({ where: { primarykey: a.primarykey } })
+        ),
+        ...fileRecord.CommentAttachment.map(a => 
+          this.prisma.commentAttachment.delete({ where: { primarykey: a.primarykey } })
+        ),
+        ...fileRecord.ChatAttachment.map((a) =>
+          this.prisma.chatAttachment.delete({
+            where: { primarykey: a.primarykey },
+          }),
+        ),
+        this.prisma.file.delete({
+          where: { primarykey: fileRecord.primarykey },
+        }),
+      ]);
+    }
+
+    await this.deleteFile(key);
+  }
+
+  async getUserFiles(userId: string) {
+    const files = await this.prisma.file.findMany({
+      where: { uploadedById: userId, isDeleted: false },
+      orderBy: { uploadedAt: 'desc' },
+    });
+
+    return Promise.all(
+      files.map(async (file) => ({
+        ...file,
+        rl: await this.generatePresignedUrl(file.path),
+      })),
+    );
+  }
+
+  async updateUserAvatar(userId: string, key: string) {
     const url = await this.generatePresignedUrl(key);
-    console.log(`File uploaded: ${key}`);
-    return { url, key };
+
+    await this.prisma.account.update({
+      where: { primarykey: userId },
+      data: { avatarUrl: url },
+    });
+
+    return url;
   }
 
   async getFileStream(key: string): Promise<Readable | undefined> {
     try {
-      const command = new GetObjectCommand({
-        Bucket: this.bucketName,
-        Key: key,
-      });
-      const response = await this.s3.send(command);
+      const response = await this.s3.send(
+        new GetObjectCommand({ Bucket: this.bucketName, Key: key })
+      );
       return response.Body as Readable;
     } catch (error) {
       return undefined;
@@ -127,35 +186,9 @@ export class S3Service {
 
   async deleteFile(key: string): Promise<void> {
     try {
-      // Удаление основной версии
       await this.s3.send(
-        new DeleteObjectCommand({
-          Bucket: this.bucketName,
-          Key: key,
-        }),
+        new DeleteObjectCommand({ Bucket: this.bucketName, Key: key }),
       );
-
-      // Удаление всех версий (если включено)
-      const versions = await this.s3.send(
-        new ListObjectVersionsCommand({
-          Bucket: this.bucketName,
-          Prefix: key,
-        }),
-      );
-
-      if (versions.Versions) {
-        await Promise.all(
-          versions.Versions.map((v) =>
-            this.s3.send(
-              new DeleteObjectCommand({
-                Bucket: this.bucketName,
-                Key: v.Key!,
-                VersionId: v.VersionId,
-              }),
-            ),
-          ),
-        );
-      }
     } catch (error) {
       throw new Error(`Failed to delete file: ${error.message}`);
     }
@@ -164,57 +197,15 @@ export class S3Service {
   async fileExists(key: string): Promise<boolean> {
     try {
       await this.s3.send(
-        new HeadObjectCommand({
-          Bucket: this.bucketName,
-          Key: key,
-        }),
+        new HeadObjectCommand({ Bucket: this.bucketName, Key: key }),
       );
       return true;
     } catch (error) {
-      if (error.name === 'NotFound') return false;
-      throw error;
+      return false;
     }
-  }
-
-  async getUserFiles(userId: string) {
-    return this.prisma.file.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-    });
-  }
-
-  private async updateUserAvatar(userId: string, fileKey: string) {
-    const url = await this.generatePresignedUrl(fileKey);
-
-    await this.prisma.account.update({
-      where: { primarykey: userId },
-      data: { avatarUrl: url },
-    });
   }
 
   async getFileUrl(key: string, expiresIn = 3600): Promise<string> {
-    const command = new GetObjectCommand({
-      Bucket: this.bucketName,
-      Key: key,
-    });
-
-    return getSignedUrl(this.s3, command, { expiresIn });
-  }
-
-  async deleteFileWithDbRecord(key: string) {
-    // Находим запись в БД по URL файла
-    const fileRecord = await this.prisma.file.findFirst({
-      where: { value: { contains: key } },
-    });
-
-    // Удаляем из S3
-    await this.deleteFile(key);
-
-    // Если есть запись в БД - удаляем и её
-    if (fileRecord) {
-      await this.prisma.file.delete({
-        where: { primarykey: fileRecord.primarykey },
-      });
-    }
+    return this.generatePresignedUrl(key, expiresIn);
   }
 }

@@ -1,29 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import OpenTask from './OpenTask';
 import { MdMoreVert, MdEdit } from 'react-icons/md';
 import './Task.scss';
-import { initialTasks } from './tasksData';
-
-export interface Task {
-  id: string;
-  number: string;
-  title: string;
-  start: Date;
-  end: Date;
-  color: string;
-  type: string;
-  description?: string;
-  priority?: string;
-  status: string;
-  project: string;
-  stage: string;
-  assignee: {
-    name: string;
-    avatar?: string;
-  };
-  attendees?: string[];
-  dueDate?: Date;
-}
+import { Task as TaskType } from '../../types/task';
+import { TasksApi } from '../../api/tasks.api';
+import { ProjectsApi } from '../../api/projects';
+import { Project } from '../../types/project';
 
 const Task: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -34,64 +16,105 @@ const Task: React.FC = () => {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [isCreatingNewTask, setIsCreatingNewTask] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const [tasks, setTasks] = useState<TaskType[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [stages, setStages] = useState<string[]>([]);
 
-  const handleStatusChange = (taskId: string, newStatus: string) => {
-    setTasks(tasks.map(task =>
-      task.id === taskId ? { ...task, status: newStatus } : task
-    ));
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+        const [tasksData, memberProjectsData, myProjectsData] = await Promise.all([
+          TasksApi.getAllTasks(),
+          ProjectsApi.getAllProjects(),
+          ProjectsApi.getAllUserProjects()
+        ]);
+
+        const combinedProjects = [...myProjectsData, ...memberProjectsData].filter(
+          (project, index, self) =>
+            index === self.findIndex((p) => p.primarykey === project.primarykey)
+        );
+
+        setProjects(combinedProjects);
+        setTasks(tasksData);
+      } catch (error) {
+        console.error('Ошибка загрузки:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadData();
+  }, []);
+
+  const handleStatusChange = async (taskId: string, newStatus: TaskType['status']) => {
+    try {
+      const updatedTask = await TasksApi.updateTask(taskId, { status: newStatus });
+      setTasks(prev => prev.map(t => t.primarykey === taskId ? updatedTask : t));
+    } catch (error) {
+      console.error('Ошибка обновления статуса:', error);
+    }
   };
 
-  const handleDeleteTask = (taskId: string) => {
-    setTasks(tasks.filter(task => task.id !== taskId));
-    if (selectedTaskId === taskId) {
-      setSelectedTaskId(null);
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      await TasksApi.deleteTask(taskId);
+      setTasks(prev => prev.filter(task => task.primarykey !== taskId));
+      if (selectedTaskId === taskId) setSelectedTaskId(null);
+    } catch (error) {
+      console.error('Ошибка удаления:', error);
     }
   };
 
   const handleCreateTask = () => {
-    const newTask = {
-      id: Math.random().toString(),
+    const newTask: TaskType = {
+      primarykey: Math.random().toString(),
       number: `#${Math.floor(Math.random() * 1000)}`,
       title: '',
-      start: new Date(),
-      end: new Date(Date.now() + 3600000),
+      startDate: new Date(),
+      endDate: new Date(),
       color: '#6366f1',
       type: 'Задача',
       status: 'todo',
       project: '',
       stage: '',
-      assignee: { name: '' },
+      priority: 'medium',
+      assigned: { 
+        id: '',
+        name: '',
+        avatarUrl: '',
+      },
       description: ''
     };
     setTasks([...tasks, newTask]);
-    setSelectedTaskId(newTask.id);
+    setSelectedTaskId(newTask.primarykey);
     setIsCreatingNewTask(true);
     setIsEditing(true);
   };
 
-  const handleSaveTask = (updatedTask: Task) => {
-    if (isCreatingNewTask) {
-      setTasks(tasks.map(t => t.id === updatedTask.id ? updatedTask : t));
-    } else {
-      setTasks(tasks.map(t => t.id === updatedTask.id ? updatedTask : t));
-    }
+  const handleSaveTask = (updatedTask: TaskType) => {
+    setTasks(prev => {
+      if (isCreatingNewTask) {
+        return prev.filter(t => t.primarykey !== selectedTaskId).concat(updatedTask);
+      }
+      return prev.map(t => t.primarykey === updatedTask.primarykey ? updatedTask : t);
+    });
     setSelectedTaskId(null);
     setIsCreatingNewTask(false);
     setIsEditing(false);
   };
 
-  const handleUseAsTemplate = (task: Task) => {
+  const handleUseAsTemplate = (task: TaskType) => {
     const newTask = {
       ...task,
-      id: Math.random().toString(),
+      primarykey: Math.random().toString(),
       number: `#${Math.floor(Math.random() * 1000)}`,
       title: '',
       description: '',
-      status: 'todo'
+      status: 'todo' as 'todo'
     };
     setTasks([...tasks, newTask]);
-    setSelectedTaskId(newTask.id);
+    setSelectedTaskId(newTask.primarykey);
     setIsCreatingNewTask(true);
     setIsEditing(true);
   };
@@ -104,7 +127,11 @@ const Task: React.FC = () => {
     return matchesSearch && matchesStatus && matchesProject && matchesStage;
   });
 
-  const selectedTask = selectedTaskId ? tasks.find(task => task.id === selectedTaskId) : null;
+  const selectedTask = selectedTaskId ? tasks.find(task => task.primarykey === selectedTaskId) : null;
+
+  if (isLoading) {
+    return <div className="loading">Загрузка задач...</div>;
+  }
 
   return (
     <div className="task-page">
@@ -134,8 +161,11 @@ const Task: React.FC = () => {
                 onChange={(e) => setSelectedProject(e.target.value)}
               >
                 <option value="">Все проекты</option>
-                <option value="Веб-сайт">Веб-сайт</option>
-                <option value="Мобильное приложение">Мобильное приложение</option>
+                {projects.map(project => (
+                  <option key={project.primarykey} value={project.primarykey}>
+                    {project.name}
+                  </option>
+                ))}
               </select>
               <select
                 className="filter-select"
@@ -169,24 +199,32 @@ const Task: React.FC = () => {
             <tbody>
               {filteredTasks.map(task => (
                 <tr 
-                  key={task.id} 
+                  key={task.primarykey} 
                   className="task-row"
                   onClick={() => {
-                    setSelectedTaskId(task.id);
+                    setSelectedTaskId(task.primarykey);
                     setIsEditing(false);
                   }}
                 >
-                  <td>{task.number}</td>
+                  <td>#{task.number}</td>
                   <td>
                     <div className="task-color" style={{ backgroundColor: task.color }} />
                     {task.title}
                   </td>
                   <td>
                     <div className="assignee-info">
-                      <div className="avatar">
-                        {task.assignee.name.slice(0, 1)}
-                      </div>
-                      {task.assignee.name}
+                      {task.assigned?.avatarUrl ? (
+                        <img 
+                          src={task.assigned?.avatarUrl} 
+                          alt={task.assigned?.name} 
+                          className="avatar" 
+                        />
+                      ) : (
+                        <div className="avatar">
+                          {task.assigned?.name.slice(0, 1)}
+                        </div>
+                      )}
+                      {task.assigned?.name}
                     </div>
                   </td>
                   <td>{task.type}</td>
@@ -195,18 +233,16 @@ const Task: React.FC = () => {
                     <select
                       className="status-select"
                       value={task.status}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        handleStatusChange(task.id, e.target.value);
-                      }}
-                      onClick={(e) => e.stopPropagation()}
+                      disabled
                     >
                       <option value="todo">To Do</option>
                       <option value="in_progress">In Progress</option>
                       <option value="done">Done</option>
                     </select>
                   </td>
-                  <td>{task.project}</td>
+                  <td>
+                    {projects.find(p => p.primarykey === task.project)?.name || 'Без проекта'}
+                  </td>
                   <td>{task.stage}</td>
                   <td>
                     <div className="context-menu">
@@ -214,21 +250,41 @@ const Task: React.FC = () => {
                         className="menu-dots" 
                         onClick={(e) => {
                           e.stopPropagation();
-                          setShowMenuId(task.id === showMenuId ? null : task.id);
+                          setShowMenuId(prev => prev === task.primarykey ? null : task.primarykey);
                         }}
                       >
                         <MdMoreVert size={20} />
                       </div>
-                      {showMenuId === task.id && (
+                      {showMenuId === task.primarykey && (
                         <div className="menu-content">
-                          <button onClick={() => {
-                            setSelectedTaskId(task.id);
-                            setIsEditing(true);
-                          }}>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedTaskId(task.primarykey);
+                              setIsEditing(true);
+                              setShowMenuId(null);
+                            }}
+                          >
                             Изменить
                           </button>
-                          <button onClick={() => handleDeleteTask(task.id)}>Удалить</button>
-                          <button onClick={() => handleUseAsTemplate(task)}>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm('Вы уверены, что хотите удалить задачу?')) {
+                                handleDeleteTask(task.primarykey);
+                              }
+                              setShowMenuId(null);
+                            }}
+                          >
+                            Удалить
+                          </button>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUseAsTemplate(task);
+                              setShowMenuId(null);
+                            }}
+                          >
                             Использовать как шаблон
                           </button>
                         </div>
@@ -242,12 +298,14 @@ const Task: React.FC = () => {
         </div>
       ) : (
         <OpenTask
-          task={selectedTask!}
+          taskId={selectedTaskId}
           isCreating={isCreatingNewTask}
           isEditing={isEditing}
+          projects={projects}
+          users={[]}
           onClose={() => {
             if (isCreatingNewTask) {
-              setTasks(tasks.filter(t => t.id !== selectedTaskId));
+              setTasks(tasks.filter(t => t.primarykey !== selectedTaskId));
             }
             setSelectedTaskId(null);
             setIsCreatingNewTask(false);

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { 
   MdClose, 
   MdFormatBold, 
@@ -9,31 +10,20 @@ import {
 } from 'react-icons/md';
 import './OpenTask.scss';
 import TaskComments from './TaskComments';
-
-interface Task {
-  id: string;
-  number: string;
-  title: string;
-  start: Date;
-  end: Date;
-  color: string;
-  type: string;
-  description?: string;
-  priority?: string;
-  status: string;
-  project: string;
-  stage: string;
-  assignee: {
-    name: string;
-    avatar?: string;
-  };
-  attendees?: string[];
-  dueDate?: Date;
-}
+import { TasksApi } from '../../api/tasks.api';
+import { ProjectsApi } from '../../api/projects';
+import { Project } from '../../types/project';
+import { Task, FileAttachment } from '../../types/task';
+import { FaFile, FaFileImage, FaFilePdf, FaFileAlt } from 'react-icons/fa';
+import UserSearchInput from '../../components/UserSearchInput';
+import { User } from '../../types/calendar';
 
 interface OpenTaskProps {
-  task: Task;
+  // task: Task;
+  taskId?: string;
   isCreating: boolean;
+  projects: Project[];
+  users?: User[];
   isEditing: boolean;
   onClose: () => void;
   onSave: (task: Task) => void;
@@ -41,17 +31,46 @@ interface OpenTaskProps {
   onEdit: () => void;
 }
 
+const FileIcon = ({ type }: { type: string }) => {
+  console.log(' sd sf sf sfd sfsfd ',type)
+  if (type.startsWith('image/')) return <FaFileImage size={24} />;
+  if (type === 'application/pdf') return <FaFilePdf size={24} />;
+  if (type.startsWith('text/')) return <FaFileAlt size={24} />;
+  return <FaFile size={24} />;
+};
+
 const OpenTask: React.FC<OpenTaskProps> = ({ 
-  task, 
-  isCreating, 
+ // task,
+  taskId,
+  isCreating,
+  projects,
   isEditing, 
   onClose, 
   onSave, 
   onDelete,
   onEdit
 }) => {
-  const [editedTask, setEditedTask] = useState<Task>(task);
-  const [selectedColor, setSelectedColor] = useState(task.color);
+  const [task, setTask] = useState<Task | null>(null);
+  const [editedTask, setEditedTask] = useState<Partial<Task>>({
+    title: '',
+    description: '',
+    status: 'todo',
+    type: 'Задача',
+    color: '#6366f1',
+    project: '',
+    stage: '',
+    startDate: new Date(),
+    endDate: new Date(),
+    assigned: { id: '', name: '', avatarUrl: '', },
+    attachments: [],
+  });
+  const [selectedColor, setSelectedColor] = useState('#6366f1');
+  const [attachments, setAttachments] = useState<FileAttachment[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [projectSearchTerm, setProjectSearchTerm] = useState('');
+  const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
+  const [errors, setErrors] = useState<{ title?: string }>({});
   
   const colors = ['#6366f1', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
   const statusOptions = ['todo', 'in_progress', 'done'];
@@ -62,19 +81,120 @@ const OpenTask: React.FC<OpenTaskProps> = ({
 
   const handleChange = (
     field: keyof Task, 
-    value: string | Date | string[] | { name: string; avatar?: string }
+    value: string | Date | User | string[] | null
   ) => {
-    setEditedTask(prev => ({ ...prev, [field]: value }));
+    if (field === 'startDate' || field === 'endDate') {
+      const dateValue = value instanceof Date ? value : new Date(value as string);
+      setEditedTask(prev => ({ ...prev, [field]: dateValue }));
+    } else if (field === 'assigned') {
+      const userValue = value as User | null;
+      setEditedTask(prev => ({
+        ...prev,
+        assigned: userValue ? {
+          id: userValue.primarykey,
+          name: [userValue.firstName, userValue.lastName].filter(Boolean).join(' '),
+          avatarUrl: userValue.avatarUrl
+        } : undefined
+      }));
+    } else {
+      setEditedTask(prev => ({ ...prev, [field]: value }));
+    }
   };
 
-  const handleSubmit = () => {
-    onSave({ ...editedTask, color: selectedColor });
+  useEffect(() => {
+    const loadTask = async () => {
+      if (taskId && !isCreating) {
+        try {
+          setIsLoading(true);
+          const loadedTask = await TasksApi.getTaskById(taskId);
+          setTask(loadedTask);
+          setEditedTask(loadedTask);
+
+          const project = projects.find(p => p.primarykey === loadedTask.project);
+          setProjectSearchTerm(project?.name || '');
+        } catch (error) {
+          console.error('Ошибка загрузки задачи:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+    
+    loadTask();
+  }, [taskId, isCreating, projects]);
+
+  useEffect(() => {
+    if (isCreating) {
+      setEditedTask({
+        ...editedTask,
+        primarykey: Math.random().toString(),
+        number: `#${Math.floor(Math.random() * 1000)}`,
+        status: 'todo'
+      });
+    }
+  }, [isCreating]);
+
+  useEffect(() => {
+    if (!editedTask.project && projects.length > 0) {
+      handleChange('project', projects[0].primarykey);
+    }
+  }, [projects]);
+
+  const handleSubmit = async () => {
+    if (!editedTask.title?.trim()) {
+      setErrors({ title: 'Название обязательно для заполнения' });
+      return;
+    }
+    setErrors({});
+    try {
+      setIsLoading(true);
+      const taskData = {
+            title: editedTask.title || '',
+            description: editedTask.description || '',
+            status: editedTask.status || 'todo',
+            type: editedTask.type as Task['type'], // Приводим тип к допустимым значениям
+            color: editedTask.color || '#6366f1',
+            project: editedTask.project || '',
+            stage: editedTask.stage || '',
+            startDate: editedTask.startDate ? new Date(editedTask.startDate) : new Date(),
+            endDate: editedTask.endDate ? new Date(editedTask.endDate) : new Date(),
+            priority: editedTask.priority || 'medium',
+            assignedTo: editedTask.assigned?.id,
+            //attachments: editedTask.attachments || [],
+            //attendees: editedTask.attendees || [],
+            // Добавляем приведение для дат
+            ...(editedTask.dueDate && { dueDate: new Date(editedTask.dueDate) })
+          };
+
+      let savedTask;
+      if (isCreating) {
+        savedTask = await TasksApi.createTask(taskData);
+      } else if (taskId) {
+        savedTask = await TasksApi.updateTask(taskId, taskData);
+      }
+
+      if (savedTask) {
+        onSave(savedTask);
+        if (isCreating) onClose();
+      }
+    } catch (error) {
+      console.error('Ошибка сохранения:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (window.confirm('Вы уверены, что хотите удалить эту задачу?')) {
-      onDelete(editedTask.id);
-      onClose();
+      try {
+        setIsLoading(true);
+        await TasksApi.deleteTask(task!.primarykey);
+        onClose();
+      } catch (error) {
+        console.error('Ошибка удаления:', error);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -95,17 +215,68 @@ const OpenTask: React.FC<OpenTaskProps> = ({
   };
 
   const renderDescription = () => {
-    if (!editedTask.description) return null;
+    if (!editedTask.description) return 'Нет описания';
     
-    // Простое форматирование Markdown
-    return editedTask.description
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/\n- (.*?)(\n|$)/g, '\n<li>$1</li>')
-      .replace(/\n\d+\. (.*?)(\n|$)/g, '\n<li>$1</li>')
-      .replace(/\n<li>/g, '<ul><li>')
-      .replace(/<\/li>\n/g, '</li></ul>');
+    return (
+      <ReactMarkdown 
+        
+        components={{
+          strong: ({node, ...props}) => <strong className="bold-text" {...props} />,
+          em: ({node, ...props}) => <em className="italic-text" {...props} />,
+          ul: ({node, ...props}) => <ul className="custom-list" {...props} />,
+          li: ({node, ...props}) => <li className="list-item" {...props} />
+        }}
+      >
+        {editedTask.description}
+      </ReactMarkdown>
+    );
   };
+
+  const filteredProjects = projects.filter(project => 
+    project.name.toLowerCase().includes(projectSearchTerm.toLowerCase())
+  );
+
+  const renderFiles = () => {
+    if (!attachments.length) return null;
+
+    return (
+      <div className="attachments-section">
+        <h4>Прикрепленные файлы:</h4>
+        <div className="files-grid">
+          {attachments.map(file => (
+            <div key={file.id} className="file-card">
+              <a
+                href={file.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="file-link"
+              >
+                <div className="file-icon">
+                  {file.type.startsWith('image/') ? (
+                    <img src={file.url} alt={file.name} className="preview" />
+                  ) : (
+                    <FileIcon type={file.type} />
+                  )}
+                </div>
+                <div className="file-info">
+                  <span className="file-name">{file.name}</span>
+                  <span className="file-size">{file.size}</span>
+                </div>
+              </a>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  if (isLoading) {
+    return <div className="loading-overlay">Загрузка...</div>;
+  }
+
+  if (!task && !isCreating) {
+    return <div className="error-message">Задача не найдена</div>;
+  }
 
   return (
     <div className="task-container">
@@ -113,23 +284,36 @@ const OpenTask: React.FC<OpenTaskProps> = ({
         <div className="task-header">
           <div className="title-section">
             <div className="task-meta">
-              <span className="task-id">{editedTask.number}</span>
+              <span className="task-id">
+                #{isCreating ? 'Новая задача' : editedTask.number}
+              </span>
               {isEditing ? (
-                <input
-                  type="text"
-                  className="title-input"
-                  value={editedTask.title}
-                  onChange={(e) => handleChange('title', e.target.value)}
-                  placeholder="Название задачи"
-                />
+                <div className="title-input-wrapper">
+                  <input
+                    type="text"
+                    className={`title-input ${errors.title ? 'error' : ''}`}
+                    value={editedTask.title}
+                    onChange={(e) => {
+                      handleChange('title', e.target.value);
+                      // Очищаем ошибку при вводе
+                      if (errors.title) setErrors({ ...errors, title: undefined });
+                    }}
+                    placeholder="Название задачи"
+                  />
+                  {errors.title && (
+                    <div className="validation-error">{errors.title}</div>
+                  )}
+                </div>
               ) : (
                 <h2 className="task-title">{editedTask.title}</h2>
               )}
-              <button className="edit-btn" onClick={onEdit}>
-                <MdEdit size={20} />
-              </button>
+              {!isEditing && (
+                <button className="edit-btn" onClick={onEdit}>
+                  <MdEdit size={20} />
+                </button>
+              )}
             </div>
-            <div className="project-name">{editedTask.project || 'Без проекта'}</div>
+
           </div>
         </div>
 
@@ -158,14 +342,13 @@ const OpenTask: React.FC<OpenTaskProps> = ({
               />
             </>
           ) : (
-            <div 
-              className="description-view"
-              dangerouslySetInnerHTML={{ __html: renderDescription() || 'Нет описания' }}
-            />
+            <div className="description-view">
+              {renderDescription()}
+            </div>
           )}
         </div>
 
-        <TaskComments />
+        <TaskComments taskId={taskId} />
 
         <div className="task-actions">
           {!isCreating && (
@@ -176,11 +359,13 @@ const OpenTask: React.FC<OpenTaskProps> = ({
           <button className="cancel-btn" onClick={onClose}>
             Отмена
           </button>
-          {isEditing && (
-            <button className="save-btn" onClick={handleSubmit}>
-              {isCreating ? 'Создать' : 'Сохранить'}
-            </button>
-          )}
+          <button 
+            className="save-btn" 
+            onClick={handleSubmit}
+            
+          >
+            {isLoading ? 'Сохранение...' : (isCreating ? 'Создать' : 'Сохранить')}
+          </button>
         </div>
       </div>
 
@@ -246,16 +431,41 @@ const OpenTask: React.FC<OpenTaskProps> = ({
 
         <div className="form-group">
           <label>Проект</label>
-          <select
-            value={editedTask.project}
-            onChange={(e) => handleChange('project', e.target.value)}
-            disabled={!isEditing}
-          >
-            <option value="">Выберите проект</option>
-            {projectOptions.map(option => (
-              <option key={option} value={option}>{option}</option>
-            ))}
-          </select>
+          <div className="project-select-container">
+            <input
+              type="text"
+              placeholder="Поиск проекта..."
+              value={projectSearchTerm}
+              onChange={(e) => {
+                setProjectSearchTerm(e.target.value);
+                setIsProjectDropdownOpen(true);
+              }}
+              onFocus={() => setIsProjectDropdownOpen(true)}
+              disabled={!isEditing || isLoading}
+            />
+            
+            {isProjectDropdownOpen && isEditing && (
+              <div className="project-dropdown">
+                {filteredProjects.map(project => (
+                  <div
+                    key={project.primarykey}
+                    className="project-option"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      handleChange('project', project.primarykey);
+                      setProjectSearchTerm(project.name);
+                      setIsProjectDropdownOpen(false);
+                    }}
+                  >
+                    {project.name}
+                  </div>
+                ))}
+                {filteredProjects.length === 0 && (
+                  <div className="dropdown-empty">Нет доступных проектов</div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="form-group">
@@ -274,11 +484,41 @@ const OpenTask: React.FC<OpenTaskProps> = ({
 
         <div className="form-group">
           <label>Исполнитель</label>
-          <input
-            value={editedTask.assignee.name}
-            onChange={(e) => handleChange('assignee', { ...editedTask.assignee, name: e.target.value })}
-            disabled={!isEditing}
-          />
+          {isEditing ? (
+            <div className="user-search-container">
+              {editedTask.assigned?.id ? (
+                <div className="selected-user">
+                  {editedTask.assigned.avatarUrl && (
+                    <img 
+                      src={editedTask.assigned.avatarUrl} 
+                      alt={editedTask.assigned.name} 
+                      className="user-avatar" 
+                    />
+                  )}
+                  <span className="user-name">
+                    {editedTask.assigned.name || editedTask.assigned.id}
+                  </span>
+                  <button
+                    className="remove-user"
+                    onClick={() => handleChange('assigned', null)}
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : (
+                <UserSearchInput
+                  selectedUsers={[]}
+                  onSelect={(user) => handleChange('assigned', user)}
+                  onRemove={() => {}}
+                  showInput={true}
+                />
+              )}
+            </div>
+          ) : (
+            <div className="assignee-view">
+              {editedTask.assigned?.name || editedTask.assigned?.id || 'Не назначен'}
+            </div>
+          )}
         </div>
 
         {editedTask.type === 'Совещание' && (
@@ -298,10 +538,8 @@ const OpenTask: React.FC<OpenTaskProps> = ({
           <label>Дата начала</label>
           <input
             type="datetime-local"
-            value={editedTask.start.toISOString().slice(0, 16)}
-            onChange={(e) => handleChange('start', new Date(e.target.value))}
-            disabled={!isEditing}
-            className="date-input"
+            value={editedTask.startDate?.toISOString().slice(0, 16) || ''}
+            onChange={(e) => handleChange('startDate', e.target.value)}
           />
         </div>
 
@@ -309,10 +547,8 @@ const OpenTask: React.FC<OpenTaskProps> = ({
           <label>Дата окончания</label>
           <input
             type="datetime-local"
-            value={editedTask.end.toISOString().slice(0, 16)}
-            onChange={(e) => handleChange('end', new Date(e.target.value))}
-            disabled={!isEditing}
-            className="date-input"
+            value={editedTask.endDate?.toISOString().slice(0, 16) || ''}
+            onChange={(e) => handleChange('endDate', e.target.value)}
           />
         </div>
       </div>
