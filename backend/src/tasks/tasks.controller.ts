@@ -45,6 +45,24 @@ export class TasksController {
     });
   }
 
+  @Get('/project/:projectId')
+  async getTasksByProject(
+    @Req() req: Request,
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Query('status') status?: string,
+    @Query('stage') stage?: string,
+    @Query('search') search?: string,
+  ) {
+    const userId = this.extractUserId(req);
+    console.log(projectId)
+    return this.tasksService.getProjectTasks(userId, {
+      projectId,
+      status,
+      stage,
+      search,
+    });
+  }
+
   @Get(':id')
   async getTaskById(
     @Param('id', ParseUUIDPipe) id: string,

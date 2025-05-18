@@ -40,6 +40,12 @@ export class ProjectsController {
     return this.projectsService.getProjectsWhereMember(userId);
   }
 
+  @Get(':id')
+  async getProjectById(@Req() req: Request, @Param('id') projectId: string) {
+    const userId = this.extractUserId(req);
+    return this.projectsService.getProjectWithAuthCheck(userId, projectId);
+  }
+
   @Post()
   async createNewProject(@Req() req: Request, @Body() dto: CreateProjectDto) {
     const userId = this.extractUserId(req);
@@ -53,6 +59,7 @@ export class ProjectsController {
     @Body() dto: UpdateProjectDto,
   ) {
     const userId = this.extractUserId(req);
+    console.log(dto)
     return this.projectsService.updateProject(userId, projectId, dto);
   }
 

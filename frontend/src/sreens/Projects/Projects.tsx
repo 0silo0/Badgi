@@ -5,6 +5,7 @@ import { ProjectEditModal } from './ProjectEditModal';
 import { ProjectsApi } from '../../api/projects';
 import './styles/main.scss';
 import { useAuth } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const ParticipantsAvatars = ({ members }: { members: Array<ProjectMember | TeamMember> }) => {
   const [showAll, setShowAll] = useState(false);
@@ -192,6 +193,7 @@ export default function Projects() {
   const [memberProjects, setMemberProjects] = useState<Project[]>([]);
   const { user: authUser } = useAuth();
   const [selectedProjectInfo, setSelectedProjectInfo] = useState<Project | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const loadProjects = async () => {
@@ -418,7 +420,11 @@ export default function Projects() {
           </thead>
           <tbody>
             {filteredProjects.map((project, index) => (
-              <tr key={project.primarykey}>
+                <tr 
+                  key={project.primarykey}
+                  onClick={() => navigate(`/projects/${project.primarykey}`)}
+                  className="project-row"
+                >
                 <td data-label="№">{index + 1}</td>
                 <td data-label="Название">
                   <div className="project-name-cell">
@@ -463,7 +469,7 @@ export default function Projects() {
           </tbody>
         </table>
 
-        {selectedProject && (
+        {/* {selectedProject && (
           <ProjectEditModal
             project={selectedProject}
             onClose={() => setSelectedProject(null)}
@@ -476,7 +482,7 @@ export default function Projects() {
             isEditing={selectedProject.createdBy === authUser?.id}
             isCreator={selectedProject.createdBy === authUser?.id}
           />
-        )}
+        )} */}
       </div>
     </div>
   );

@@ -14,6 +14,17 @@ export const TasksApi = {
     }
   },
 
+  async getProjectTasks(projectId?: string): Promise<Task[]> {
+    try {
+      console.log(projectId)
+      const response = await apiClient.get(`/tasks/project/${projectId}`);
+      return response.data.map(this.mapTask);
+    } catch (error) {
+      this.handleError(error, 'Ошибка загрузки задач');
+      throw error;
+    }
+  },
+
   async getTaskById(id: string): Promise<Task> {
     try {
       const response = await apiClient.get(`/tasks/${id}`);

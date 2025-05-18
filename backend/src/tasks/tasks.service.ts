@@ -75,6 +75,57 @@ export class TasksService {
     });
   }
 
+  async getProjectTasks(
+    userId: string,
+    filters: {
+      projectId?: string;
+      status?: string;
+      stage?: string;
+      search?: string;
+    },
+  ) {
+    const tasks = await this.prisma.task.findMany({
+      where: {
+        project: filters.projectId,
+      },
+      include: {
+        projectRef: true,
+        assignedToRef: {
+          select: {
+            avatarUrl: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            login: true,
+          },
+        },
+        comments: {
+          include: {
+            account: true,
+          },
+        },
+        attachments: {
+          include: {
+            file: true,
+          },
+        },
+      },
+    });
+    return tasks.map((task) => {
+      const { assignedToRef, ...rest } = task;
+      const assigned = assignedToRef
+        ? {
+            ...assignedToRef,
+            name: `${assignedToRef.firstName || ''} ${assignedToRef.lastName || ''}`.trim(),
+          }
+        : null;
+      return {
+        ...rest,
+        assigned,
+      };
+    });
+  }
+
   async getTask(id: string, userId: string) {
     const task = await this.prisma.task.findUnique({
       where: { primarykey: id },

@@ -1,0 +1,94 @@
+import { useEffect, useState } from 'react';
+import { NavLink, Outlet, useParams, useNavigate } from 'react-router-dom';
+import { ProjectsApi } from '../../api/projects';
+import { Project } from '../../types/project';
+import { useAuth } from '../../context/AuthContext';
+import './styles/projectPage.scss';
+import { ProjectSettingsModal } from './ProjectSettingsModal';
+
+export default function ProjectPage() {
+  const { projectId } = useParams();
+  const [project, setProject] = useState<Project | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const loadProject = async () => {
+      try {
+        console.log('sa asf d')
+        const data = await ProjectsApi.getProjectById(projectId!);
+        setProject(data);
+      } catch (error) {
+        console.error('Error loading project:', error);
+        navigate('/projects');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadProject();
+  }, [projectId]);
+
+  const handleUpdateProject = (updatedProject: Project) => {
+    setProject(updatedProject);
+    setSettingsOpen(false);
+  };
+
+  if (loading) return <div>Загрузка...</div>;
+  if (!project) return <div>Проект не найден</div>;
+
+  return (
+    <div className="project-page">
+      <div className="project-header">
+        <h1>{project.name}</h1>
+        <div className="project-meta">
+          <span className="status" data-status={project.status}>
+            {project.status}
+          </span>
+          <span className="dates">
+            {new Date(project.startDate).toLocaleDateString()} -{' '}
+            {new Date(project.endDate).toLocaleDateString()}
+          </span>
+        </div>
+      </div>
+
+      <nav className="project-tabs">
+        <NavLink 
+          to=""
+          end
+          className={({ isActive }: { isActive: boolean }) => isActive ? 'active' : ''}
+        >
+          Доска
+        </NavLink>
+        <NavLink 
+          to="analytics"
+          end
+          className={({ isActive }: { isActive: boolean }) => isActive ? 'active' : ''}
+        >
+          Аналитика
+        </NavLink>
+        {project.createdBy === user?.id && (
+          <button 
+            className={`settings-tab ${settingsOpen ? 'active' : ''}`}
+            onClick={() => setSettingsOpen(true)}
+          >
+            Настройки
+          </button>
+        )}
+      </nav>
+
+      <div className="project-content">
+        <Outlet context={project} />
+        {settingsOpen && (
+          <ProjectSettingsModal 
+            project={project}
+            onClose={() => setSettingsOpen(false)}
+            onUpdate={handleUpdateProject}
+          />
+        )}
+      </div>
+    </div>
+  );
+}

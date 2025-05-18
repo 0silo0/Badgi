@@ -240,6 +240,8 @@ export const ProjectEditModal = ({
         logoUrl
       };
 
+      console.log(form)
+
       const savedProject = form.primarykey
         ? await ProjectsApi.updateProject(form.primarykey, projectData)
         : await ProjectsApi.createProject(projectData);

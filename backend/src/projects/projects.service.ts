@@ -126,19 +126,37 @@ export class ProjectsService {
       include: {
         ProjectMember: {
           include: {
-            account: true,
+            account: {
+              select: {
+                primarykey: true,
+                email: true,
+                login: true,
+                firstName: true,
+                lastName: true,
+                avatarUrl: true,
+              },
+            },
+            role: true,
           },
         },
         teams: {
           include: {
             members: {
               include: {
-                account: true,
+                account: {
+                  select: {
+                    primarykey: true,
+                    email: true,
+                    login: true,
+                    firstName: true,
+                    lastName: true,
+                    avatarUrl: true,
+                  },
+                },
               },
             },
           },
         },
-        tasks: true,
       },
     });
 
@@ -424,6 +442,14 @@ export class ProjectsService {
     if (project.logoUrl) {
       await this.s3Service.deleteFileWithDbRecord(project.logoUrl);
     }
+
+    await this.prisma.projectMember.deleteMany({
+      where: { projectId: projectId },
+    });
+
+    await this.prisma.team.deleteMany({
+      where: { project: projectId },
+    });
 
     return this.prisma.project.delete({
       where: { primarykey: projectId },
