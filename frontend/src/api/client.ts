@@ -60,6 +60,7 @@ export const createApiClient = (logoutFn?: () => Promise<void>) => {
       'Content-Type': 'application/json',
     },
     withCredentials: true,
+    maxRedirects: 0,
   });
 
   const setupSocket = (token: string): Socket => {

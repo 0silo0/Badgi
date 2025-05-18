@@ -20,6 +20,7 @@ import ForgotPasswordEmail from './sreens/Auth/ForgotPassword/ForgotPasswordEmai
 import ForgotPasswordConfirm from './sreens/Auth/ForgotPassword/ForgotPasswordConfirm/ForgotPasswordConfirm';
 import ResetPassword from './sreens/Auth/ForgotPassword/ResetPassword/ResetPassword';
 import { createApiClient } from './api/client';
+import FileManager from './sreens/FileManager/FileManager';
 
 const ProtectedLayout = () => {
   const { isAuthenticated } = useAuth();
@@ -52,6 +53,7 @@ const AppRoutes = () => {
           <Route path="/calendar" element={<Calendar />} />
           <Route path="/messages" element={<Messages />} />
           <Route path="/projects" element={<Projects />} />
+          <Route path="/files" element ={<FileManager />} />
         </Route>
 
         <Route path="/register">

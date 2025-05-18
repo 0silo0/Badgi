@@ -8,7 +8,8 @@ import {
   FiFileText, 
   FiCalendar,
   FiMessageSquare,
-  FiBox
+  FiBox,
+  FiFileMinus
 } from 'react-icons/fi';
 import { TbLogout2 } from "react-icons/tb";
 import './Sidebar.scss';
@@ -36,6 +37,7 @@ export default function Sidebar() {
     { path: '/calendar', icon: <FiCalendar /> },
     { path: '/messages', icon: <FiMessageSquare /> },
     { path: '/projects', icon: <FiBox /> },
+    { path: '/files', icon: <FiFileMinus /> },
   ];
 
   return (

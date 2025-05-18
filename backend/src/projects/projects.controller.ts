@@ -37,14 +37,12 @@ export class ProjectsController {
   @Get('/my-memberships')
   async getProjectsWhereMember(@Req() req: Request) {
     const userId = this.extractUserId(req);
-    console.log(userId)
     return this.projectsService.getProjectsWhereMember(userId);
   }
 
   @Post()
   async createNewProject(@Req() req: Request, @Body() dto: CreateProjectDto) {
     const userId = this.extractUserId(req);
-    console.log(userId, dto);
     return this.projectsService.createProject(userId, dto);
   }
 
@@ -55,7 +53,6 @@ export class ProjectsController {
     @Body() dto: UpdateProjectDto,
   ) {
     const userId = this.extractUserId(req);
-    console.log(dto, 'end')
     return this.projectsService.updateProject(userId, projectId, dto);
   }
 

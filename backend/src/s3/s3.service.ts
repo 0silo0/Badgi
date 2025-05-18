@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ForbiddenException, BadRequestException, NotFoundException } from '@nestjs/common';
 import {
   S3Client,
   PutObjectCommand,
@@ -11,6 +11,9 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { ConfigService } from '@nestjs/config';
 import { Readable } from 'stream';
 import { PrismaService } from '../prisma/prisma.service';
+import { FileHierarchy } from '@prisma/client';
+import { FileHierarchyResponseDto } from './dto/FileHierarchyResponse.dto';
+import { CreateFolderDto } from './dto/createfolder.dto';
 
 @Injectable()
 export class S3Service {
@@ -72,13 +75,11 @@ export class S3Service {
       }),
     );
 
-    console.log(file)
-
     const dbFile = await this.prisma.file.create({
       data: {
         filename: file.originalname,
         path: await this.generatePresignedUrl(key),
-        size: BigInt(file.size),
+        size: file.size,
         mimeType: fileType || file.mimetype,
         uploadedById: userId,
         isDeleted: false,
@@ -128,11 +129,15 @@ export class S3Service {
 
     if (fileRecord) {
       await this.prisma.$transaction([
-        ...fileRecord.TaskAttachment.map(a => 
-          this.prisma.taskAttachment.delete({ where: { primarykey: a.primarykey } })
+        ...fileRecord.TaskAttachment.map((a) =>
+          this.prisma.taskAttachment.delete({
+            where: { primarykey: a.primarykey },
+          }),
         ),
-        ...fileRecord.CommentAttachment.map(a => 
-          this.prisma.commentAttachment.delete({ where: { primarykey: a.primarykey } })
+        ...fileRecord.CommentAttachment.map((a) =>
+          this.prisma.commentAttachment.delete({
+            where: { primarykey: a.primarykey },
+          }),
         ),
         ...fileRecord.ChatAttachment.map((a) =>
           this.prisma.chatAttachment.delete({
@@ -207,5 +212,355 @@ export class S3Service {
 
   async getFileUrl(key: string, expiresIn = 3600): Promise<string> {
     return this.generatePresignedUrl(key, expiresIn);
+  }
+
+  private async generateFolderPath(
+    userId: string,
+    parentId: string | undefined,
+    folderName: string,
+  ): Promise<string> {
+    let basePath = `users/${userId}`;
+
+    if (parentId) {
+      const parent = await this.prisma.fileHierarchy.findUnique({
+        where: { primarykey: parentId },
+      });
+
+      if (!parent) {
+        throw new Error(`Parent folder with ID ${parentId} not found`);
+      }
+
+      basePath = parent.s3Key;
+    }
+
+    return `${basePath}/${folderName}`;
+  }
+
+  async createFolder(
+    userId: string,
+    dto: CreateFolderDto,
+  ): Promise<FileHierarchyResponseDto> {
+    try {
+      let finalName = dto.name;
+      let counter = 1;
+
+      while (true) {
+        const existingFolder = await this.prisma.fileHierarchy.findFirst({
+          where: {
+            parentId: dto.parentId,
+            name: finalName,
+            type: 'FOLDER',
+            ownerId: userId,
+          },
+        });
+
+        if (!existingFolder) break;
+
+        // Извлекаем существующий номер из имени (если есть)
+        const match = finalName.match(/^(.*?)\s*\((\d+)\)$/);
+        if (match) {
+          counter = parseInt(match[2]) + 1;
+          finalName = `${match[1]} (${counter})`;
+        } else {
+          finalName = `${dto.name} (${counter++})`;
+        }
+      }
+
+      const s3Key = await this.generateFolderPath(
+        userId,
+        dto.parentId,
+        finalName,
+      );
+
+      const folder = await this.prisma.fileHierarchy.create({
+        data: {
+          name: finalName,
+          type: 'FOLDER',
+          s3Key,
+          parentId: dto.parentId,
+          ownerId: userId,
+        },
+      });
+
+      return this.toResponseDto(folder);
+
+    } catch (error) {
+      throw new Error(`Failed to create folder: ${error.message}`);
+    }
+  }
+
+  async uploadToHierarchy(
+    file: Express.Multer.File,
+    userId: string,
+    parentId?: string,
+  ): Promise<FileHierarchyResponseDto> {
+    // 1. Проверка родительской папки
+    const parent = parentId
+      ? await this.prisma.fileHierarchy.findFirstOrThrow({
+          where: {
+            primarykey: parentId,
+            type: 'FOLDER',
+            ownerId: userId,
+          },
+        })
+      : null;
+
+    // 2. Генерация уникального s3Key
+    const s3Key = parent
+      ? `${parent.s3Key}/${file.originalname}`
+      : `users/${userId}/${file.originalname}`;
+
+    // 3. Загрузка в S3
+    const uploadedFile = await this.uploadAndSaveFile(
+      file,
+      'user-uploads',
+      userId,
+      file.mimetype,
+    );
+
+    const hierarchy = await this.prisma.fileHierarchy.create({
+      data: {
+        name: file.originalname,
+        type: 'FILE',
+        s3Key,
+        parentId: parent?.primarykey,
+        fileId: uploadedFile.primarykey,
+        ownerId: userId,
+      },
+      include: { file: true },
+    });
+
+    return this.toResponseDto(hierarchy);
+  }
+
+  async moveHierarchyItem(
+    itemId: string,
+    newParentId: string,
+    userId: string,
+  ): Promise<FileHierarchyResponseDto> {
+    const item = await this.prisma.fileHierarchy.findUniqueOrThrow({
+      where: { primarykey: itemId },
+      include: { children: true },
+    });
+
+    if (item.ownerId !== userId) {
+      throw new ForbiddenException('Access denied');
+    }
+
+    const newParent = await this.prisma.fileHierarchy.findUniqueOrThrow({
+      where: { primarykey: newParentId },
+    });
+
+    // Обновляем путь для всех дочерних элементов
+    const updatePaths = async (currentItem: any, newBasePath: string) => {
+      const newPath = `${newBasePath}/${currentItem.name}`;
+
+      await this.prisma.fileHierarchy.update({
+        where: { primarykey: currentItem.primarykey },
+        data: { s3Key: newPath },
+      });
+
+      if (currentItem.children) {
+        for (const child of currentItem.children) {
+          await updatePaths(child, newPath);
+        }
+      }
+    };
+
+    await updatePaths(item, newParent.s3Key);
+
+    return this.toResponseDto(
+      await this.prisma.fileHierarchy.update({
+        where: { primarykey: itemId },
+        data: { parentId: newParentId },
+      })
+    );
+  }
+
+  // private async updateChildrenPaths(
+  //   parentId: string,
+  //   newBasePath: string,
+  // ): Promise<void> {
+  //   const children = await this.prisma.fileHierarchy.findMany({
+  //     where: { parentId },
+  //   });
+
+  //   for (const child of children) {
+  //     const newChildPath = `${newBasePath}/${child.name}`;
+
+  //     await this.prisma.fileHierarchy.update({
+  //       where: { primarykey: child.primarykey },
+  //       data: { s3Key: newChildPath },
+  //     });
+
+  //     if (child.type === 'FOLDER') {
+  //       await this.updateChildrenPaths(child.primarykey, newChildPath);
+  //     }
+  //   }
+  // }
+
+  // async softDeleteItem(itemId: string, userId: string): Promise<void> {
+  //   const item = await this.prisma.fileHierarchy.findUniqueOrThrow({
+  //     where: { primarykey: itemId }
+  //   });
+
+  //   if (item.ownerId !== userId) {
+  //     throw new ForbiddenException('Access denied');
+  //   }
+
+  //   // Для файлов - помечаем как удаленные
+  //   // Для папок - рекурсивно помечаем детей
+  //   await this.markAsDeleted(itemId);
+  // }
+
+  async hardDeleteItem(itemId: string, userId: string): Promise<void> {
+    const item = await this.prisma.fileHierarchy.findUniqueOrThrow({
+      where: { primarykey: itemId },
+      include: {
+        children: true,
+        file: true,
+      },
+    });
+
+    if (item.ownerId !== userId) {
+      throw new ForbiddenException('Access denied');
+    }
+
+    // Удаляем из S3
+    if (item.type === 'FILE' && item.file?.path) {
+      await this.deleteFile(item.file.path);
+    }
+    // else if (item.type === 'FOLDER') {
+    //   await this.deleteFolderFromS3(item.s3Key);
+    // }
+
+    // Рекурсивное удаление дочерних элементов
+    if (item.children.length > 0) {
+      for (const child of item.children) {
+        await this.hardDeleteItem(child.primarykey, userId);
+      }
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.fileHierarchy.delete({
+        where: { primarykey: itemId },
+      }),
+
+      ...(item.fileId
+        ? [
+            this.prisma.file.delete({
+              where: { primarykey: item.fileId },
+          })]
+      : []),
+    ]);
+  }
+
+  // private async markAsDeleted(itemId: string): Promise<void> {
+  //   const item = await this.prisma.fileHierarchy.update({
+  //     where: { primarykey: itemId },
+  //     data: { isDeleted: true },
+  //     include: { children: true },
+  //   });
+
+  //   if (item.type === 'FOLDER') {
+  //     for (const child of item.children) {
+  //       await this.markAsDeleted(child.primarykey);
+  //     }
+  //   }
+  // }
+
+  async updateItemName(
+    id: string,
+    newName: string,
+    userId: string,
+  ): Promise<FileHierarchyResponseDto> {
+    const item = await this.prisma.fileHierarchy.findUniqueOrThrow({
+      where: { primarykey: id },
+    });
+
+    if (item.ownerId !== userId) {
+      throw new ForbiddenException('Access denied');
+    }
+
+    const updatedItem = await this.prisma.fileHierarchy.update({
+      where: { primarykey: id },
+      data: { name: newName },
+    });
+
+    return this.toResponseDto(updatedItem);
+  }
+
+  async getFileTree(
+    userId: string,
+    parentId?: string,
+  ): Promise<FileHierarchyResponseDto[]> {
+    const allItems = await this.prisma.fileHierarchy.findMany({
+      where: {
+        ownerId: userId,
+        isDeleted: false,
+      },
+      include: {
+        file: true,
+      },
+      orderBy: [{ type: 'desc' }, { name: 'asc' }],
+    });
+
+    // Строим дерево
+    const buildTree = (
+      items: any[],
+      parentId?: string | null,
+    ): FileHierarchyResponseDto[] => {
+      return items
+        .filter((item) => item.parentId === parentId)
+        .map((item) => ({
+          ...this.toResponseDto(item),
+          children: buildTree(items, item.primarykey),
+        }));
+    };
+
+    return buildTree(allItems, parentId ? parentId : null);
+  }
+
+  async getFileDownloadUrl(hierarchyId: string, userId: string) {
+    const hierarchyItem = await this.prisma.fileHierarchy.findUnique({
+      where: { primarykey: hierarchyId },
+      include: { file: true },
+    });
+
+    if (!hierarchyItem) {
+      throw new NotFoundException('File not found');
+    }
+
+    if (hierarchyItem.ownerId !== userId) {
+      throw new ForbiddenException('Access denied');
+    }
+
+    if (hierarchyItem.type !== 'FILE') {
+      throw new BadRequestException('Cannot download folders');
+    }
+
+    if (!hierarchyItem.file?.path) {
+      throw new NotFoundException('File content missing');
+    }
+
+    return {
+      name: hierarchyItem.name,
+      url: hierarchyItem.file.path,
+      key: hierarchyItem.file.path,
+    };
+  }
+
+  private toResponseDto(item: any): FileHierarchyResponseDto {
+    return new FileHierarchyResponseDto({
+      id: item.primarykey,
+      name: item.name,
+      type: item.type,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+      url: item.file?.path,
+      size: item.file?.size,
+      mimeType: item.file?.mimeType,
+      children: item.children?.map((c) => this.toResponseDto(c)),
+    });
   }
 }

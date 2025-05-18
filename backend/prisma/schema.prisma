@@ -56,6 +56,7 @@ model Account {
   Calendar Calendar[] @relation("calendar")
   CommentAttachment CommentAttachment[] @relation("commentAttachment")
   File File[]
+  FileHierarchy FileHierarchy[]
 }
 
 model Role {
@@ -239,7 +240,7 @@ model File {
   primarykey String    @id @default(uuid())
   filename    String
   path        String
-  size        BigInt
+  size        Int
   mimeType    String    @map("mime_type")
   uploadedById String   @map("uploaded_by")
   uploadedBy  Account   @relation(fields: [uploadedById], references: [primarykey])
@@ -251,6 +252,7 @@ model File {
   TaskAttachment TaskAttachment[]
   CommentAttachment CommentAttachment[]
   Account Account[] @relation("userRef")
+  FileHierarchy FileHierarchy[]
 }
 
 model UserSettings {
@@ -372,4 +374,32 @@ model AppLog {
   message        String
 
   @@map("applogs")
+}
+
+model FileHierarchy {
+  primarykey String    @id @default(uuid())
+  name       String    // Имя элемента (обязательно)
+  type       FileType  @default(FILE) // Тип: FILE или FOLDER
+  s3Key      String    @map("s3_key") // Полный путь в S3 (генерируется автоматически)
+  parentId   String?   @map("parent_id") // Родительский элемент
+  parent     FileHierarchy? @relation("FileParent", fields: [parentId], references: [primarykey])
+  children   FileHierarchy[] @relation("FileParent")
+  fileId     String?   @map("file_id") // Связь с физическим файлом (только для type=FILE)
+  file       File?     @relation(fields: [fileId], references: [primarykey])
+  ownerId    String    @map("owner_id") // Владелец
+  owner      Account   @relation(fields: [ownerId], references: [primarykey])
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at")
+  isDeleted  Boolean   @default(false) @map("is_deleted") // Мягкое удаление
+
+  // Индексы
+  @@index([parentId])
+  @@index([s3Key])
+  @@index([ownerId])
+  @@map("file_hierarchy")
+}
+
+enum FileType {
+  FILE
+  FOLDER
 }

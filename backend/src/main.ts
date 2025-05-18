@@ -25,9 +25,23 @@ async function bootstrap() {
       'https://176.123.160.42:3101',
     ],
     methods: ['GET', 'HEAD', 'PATCH', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Accept',
+      'Range',
+      'Content-Disposition',
+      'Origin',
+    ],
     credentials: true, // Позволяет отправлять cookies и авторизационные заголовки
-    exposedHeaders: ['Authorization', 'Set-Cookie'],
+    exposedHeaders: [
+      'Authorization',
+      'Set-Cookie',
+      'Content-Length',
+      'Content-Range',
+      'Content-Disposition',
+      'Location',
+    ],
   });
 
   app.useWebSocketAdapter(new IoAdapter(app));
