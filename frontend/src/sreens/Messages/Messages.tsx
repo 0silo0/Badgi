@@ -6,6 +6,133 @@ import './Messages.css';
 import { Message, User, Chat } from '../../types/chat';
 import { useAuth } from '../../context/AuthContext';
 import { FaArrowLeft } from 'react-icons/fa';
+import { FaEllipsisV } from 'react-icons/fa';
+
+const formatMessageDate = (date: Date): string => {
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  
+  const messageDate = new Date(date);
+  messageDate.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+  yesterday.setHours(0, 0, 0, 0);
+
+  if (messageDate.getTime() === today.getTime()) {
+    return 'Сегодня';
+  } else if (messageDate.getTime() === yesterday.getTime()) {
+    return 'Вчера';
+  } else {
+    return messageDate.toLocaleDateString('ru-RU', {
+      day: 'numeric',
+      month: 'long',
+      year: messageDate.getFullYear() !== today.getFullYear() ? 'numeric' : undefined
+    });
+  }
+};
+
+// Функция для группировки сообщений по дням
+const groupMessagesByDate = (messages: Message[]) => {
+  const grouped: Record<string, Message[]> = {};
+
+  messages.forEach((message) => {
+    const date = new Date(message.createdAt);
+    date.setHours(0, 0, 0, 0);
+    const dateKey = date.toISOString().split('T')[0];
+    
+    if (!grouped[dateKey]) {
+      grouped[dateKey] = [];
+    }
+    grouped[dateKey].push(message);
+  });
+
+  return grouped;
+};
+
+export const GroupChatInfo = ({ chat, onRemoveMember, onDeleteChat }: {
+  chat: Chat;
+  onRemoveMember: (memberId: string) => void;
+  onDeleteChat: () => void;
+}) => {
+  const { user: authUser } = useAuth();
+  const [showMenu, setShowMenu] = useState(false);
+  const [showMembers, setShowMembers] = useState(false);
+
+  const isAdmin = chat.account === authUser?.id;
+
+  return (
+    <div className="group-header">
+      <div className="group-title-container">
+        <h3 className="group-title">{chat.title}</h3>
+        <div className="group-actions">
+          <button 
+            className="group-menu-button"
+            onClick={() => setShowMenu(!showMenu)}
+          >
+            <FaEllipsisV />
+          </button>
+          
+          {showMenu && (
+            <div className="group-menu">
+              <button 
+                className="group-menu-item"
+                onClick={() => {
+                  setShowMembers(!showMembers);
+                  setShowMenu(false);
+                }}
+              >
+                Участники ({chat.members.length})
+              </button>
+              {isAdmin && (
+                <>
+                  <button 
+                    className="group-menu-item danger"
+                    onClick={() => {
+                      onDeleteChat();
+                      setShowMenu(false);
+                    }}
+                  >
+                    Удалить группу
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {showMembers && (
+        <div className="group-members-dropdown">
+          <div className="members-list">
+            {chat.members.map((member) => (
+              <div key={member.accountRef.id} className="member-item">
+                <div className="member-info">
+                  <img 
+                    src={member.accountRef.avatarUrl || '/default-avatar.png'} 
+                    alt={member.accountRef.firstName} 
+                    className="member-avatar"
+                  />
+                  <span>
+                    {member.accountRef.firstName} {member.accountRef.lastName}
+                    {member.accountRef.id === chat.account && ' (создатель)'}
+                  </span>
+                </div>
+                {isAdmin && member.accountRef.id !== chat.account && (
+                  <button 
+                    className="remove-member-button"
+                    onClick={() => onRemoveMember(member.accountRef.id)}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const Messages = () => {
   const { user: authUser } = useAuth();
@@ -65,17 +192,36 @@ export const Messages = () => {
     }
   };
   
+  // const handleSelectChat = (chatId: string) => {
+  //   setCurrentChat(chatId);
+  //   const recipient = userChats.find((i) => i.primarykey === chatId)?.members.find((i) => i.accountRef.id !== authUser?.id);
+  //   setCurrentRecipient({
+  //     id: recipient?.accountRef.id || '',
+  //     login: recipient?.accountRef.login,
+  //     firstName: recipient?.accountRef.firstName || '',
+  //     lastName: recipient?.accountRef.lastName || '',
+  //     avatarUrl: recipient?.accountRef.avatarUrl,
+  //     email: recipient?.accountRef.email
+  //   })
+  // };
+
   const handleSelectChat = (chatId: string) => {
+    const chat = userChats.find(c => c.primarykey === chatId);
     setCurrentChat(chatId);
-    const recipient = userChats.find((i) => i.primarykey === chatId)?.members.find((i) => i.accountRef.id !== authUser?.id);
-    setCurrentRecipient({
-      id: recipient?.accountRef.id || '',
-      login: recipient?.accountRef.login,
-      firstName: recipient?.accountRef.firstName || '',
-      lastName: recipient?.accountRef.lastName || '',
-      avatarUrl: recipient?.accountRef.avatarUrl,
-      email: recipient?.accountRef.email
-    })
+    
+    if (chat?.isPrivate) {
+      const recipient = userChats.find((i) => i.primarykey === chatId)?.members.find((i) => i.accountRef.id !== authUser?.id);
+      setCurrentRecipient({
+        id: recipient?.accountRef.id || '',
+        login: recipient?.accountRef.login,
+        firstName: recipient?.accountRef.firstName || '',
+        lastName: recipient?.accountRef.lastName || '',
+        avatarUrl: recipient?.accountRef.avatarUrl,
+        email: recipient?.accountRef.email
+      })
+    } else {
+      setCurrentRecipient(null); // Для группового чата
+    }
   };
 
   const handleSend = async () => {
@@ -102,7 +248,43 @@ export const Messages = () => {
         onSelectChat={handleSelectChat} 
       />
     );
-  }
+  };
+
+  const groupedMessages = groupMessagesByDate(
+    messages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+  );
+
+  const handleRemoveMember = async (memberId: string) => {
+    try {
+      await apiClient.delete(`/chat/group/${currentChat}/members/${memberId}`);
+      // Обновляем список чатов
+      await loadUserChats();
+      // Обновляем текущий чат
+      const updatedChats = await apiClient.get('/chat/my');
+      setUserChats(updatedChats.data);
+    } catch (error) {
+      console.error('Failed to remove member:', error);
+      alert('Не удалось удалить участника');
+    }
+  };
+
+  const handleDeleteChat = async () => {
+    if (!window.confirm('Вы уверены, что хотите удалить этот чат? Это действие нельзя отменить.')) {
+      return;
+    }
+
+    try {
+      await apiClient.delete(`/chat/group/${currentChat}`);
+      // Возвращаемся к списку чатов
+      setCurrentChat(null);
+      setCurrentRecipient(null);
+      // Обновляем список чатов
+      await loadUserChats();
+    } catch (error) {
+      console.error('Failed to delete chat:', error);
+      alert('Не удалось удалить чат');
+    }
+  };
 
   return (
     <div className="chat-container">
@@ -114,6 +296,8 @@ export const Messages = () => {
       >
         <FaArrowLeft />
       </button>
+
+    {currentRecipient ? (
       <div className="recipient-info">
         {currentRecipient?.avatarUrl ? (
             <img
@@ -129,13 +313,21 @@ export const Messages = () => {
         <div className="recipient-name">
           {currentRecipient?.firstName} {currentRecipient?.lastName}
         </div>
-        </div>
-        <span className={`connection-status ${isConnected ? 'connected' : 'disconnected'}`}>
-          {isConnected ? 'Online' : 'Offline'}
-        </span>
       </div>
+      ) : (
+        // Шапка для группового чата
+        <GroupChatInfo 
+          chat={userChats.find(c => c.primarykey === currentChat)!} 
+          onRemoveMember={handleRemoveMember}
+          onDeleteChat={handleDeleteChat}
+        />
+      )}
+      <span className={`connection-status ${isConnected ? 'connected' : 'disconnected'}`}>
+        {isConnected ? 'Online' : 'Offline'}
+      </span>
+    </div>
       
-      <div className="messages-list">
+      {/* <div className="messages-list">
         {messages
           .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
           .map((msg) => (
@@ -161,6 +353,40 @@ export const Messages = () => {
             </div>
           ))}
           <div ref={messagesEndRef} />
+      </div> */}
+
+      <div className="messages-list">
+        {Object.entries(groupedMessages).map(([dateKey, dayMessages]) => (
+          <div key={dateKey} className="message-day-group">
+            <div className="message-date-divider">
+              <span>{formatMessageDate(new Date(dateKey))}</span>
+            </div>
+            
+            {dayMessages.map((msg) => (
+            <div
+              key={msg.id}
+              className={`message ${msg.account.id === authUser?.id ? 'my-message' : 'other-message'}`}>
+              {msg.account.id !== authUser?.id && (
+                <img
+                  src={msg.account.avatarUrl || '/default-avatar.png'} 
+                  alt={msg.account.firstName}
+                  className="message-avatar"
+                />
+              )}
+              <div className="message-content-wrapper">
+                {msg.account.id !== authUser?.id && (
+                  <div className="message-author">{msg.account.firstName}</div>
+                )}
+                <div className="message-content">{msg.content}</div>
+                <div className="message-time">
+                  {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </div>
+              </div>
+            </div>
+            ))}
+          </div>
+        ))}
+        <div ref={messagesEndRef} />
       </div>
       
       <div className="message-input-container">

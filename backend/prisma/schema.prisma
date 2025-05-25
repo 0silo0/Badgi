@@ -240,7 +240,7 @@ model File {
   primarykey String    @id @default(uuid())
   filename    String
   path        String
-  size        Int
+  size        BigInt
   mimeType    String    @map("mime_type")
   uploadedById String   @map("uploaded_by")
   uploadedBy  Account   @relation(fields: [uploadedById], references: [primarykey])

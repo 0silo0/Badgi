@@ -272,7 +272,7 @@ const renderFilePreview = (file: UploadingFile | FileAttachment) => {
           ) : (
             <div className="file-info">
               <span className="name">{file.name}</span>
-              <span className="size">{file.size}</span>
+              <span className="size"> {file.size}</span>
             </div>
           )}
         </a>
@@ -393,7 +393,7 @@ const renderFilePreview = (file: UploadingFile | FileAttachment) => {
           <button 
             className="send-button"
             onClick={handleAddComment}
-            disabled={newComment.trim() === '' && files.length === 0}
+            disabled={(newComment.trim() === '' && files.length === 0) || taskId?.toString()[1] === '.'}
           >
             <MdSend size={20} />
             {editingCommentId ? 'Обновить' : 'Отправить'}

@@ -7,6 +7,10 @@ import * as cookieParser from 'cookie-parser';
 import * as express from 'express';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 
+(BigInt.prototype as any).toJSON = function () {
+  return this.toString();
+};
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 

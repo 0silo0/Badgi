@@ -16,6 +16,7 @@ import { ChatModule } from './chat/chat.module';
 import { ProjectsModule } from './projects/projects.module';
 import { CalendarModule } from './calendar/calendar.module';
 import { TasksModule } from './tasks/tasks.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { TasksModule } from './tasks/tasks.module';
     AuthModule,
     S3Module,
     MailModule,
+    ScheduleModule.forRoot(),
     MulterModule.register({
       storage: diskStorage({
         destination: './uploads', // временная папка для загрузки

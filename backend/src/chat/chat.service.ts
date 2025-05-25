@@ -56,6 +56,44 @@ export class ChatService {
     });
   }
 
+  async createGroupChat(userId: string, dto: CreateChatDto) {
+    const uniqueMemberIds = [
+      ...new Set(dto.memberIds.filter((id) => id !== userId)),
+    ];
+
+    return this.prisma.chat.create({
+      data: {
+        title: dto.title,
+        description: dto.description,
+        isPrivate: false,
+        account: userId,
+        members: {
+          create: [
+            { account: userId }, // создатель
+            ...uniqueMemberIds.map((id) => ({
+              // участники
+              account: id,
+            })),
+          ],
+        },
+      },
+      include: {
+        members: {
+          select: {
+            accountRef: {
+              select: {
+                primarykey: true,
+                firstName: true,
+                lastName: true,
+                avatarUrl: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
   async sendMessage({ userId, ...dto }: { userId: string } & SendMessageDto) {
     console.log(`Message attempt from ${userId} in chat ${dto.chatId}`);
     if (!dto.chatId || !userId) {
@@ -243,6 +281,15 @@ export class ChatService {
           },
         },
         messages: {
+          include: {
+            accountRef: {
+              select: {
+                firstName: true,
+                lastName: true,
+                avatarUrl: true,
+              },
+            },
+          },
           orderBy: { createdAt: 'desc' },
           take: 1,
         },
@@ -261,6 +308,19 @@ export class ChatService {
     }));
   }
 
+  async addMembersToGroup(chatId: string, userIds: string[]) {
+    return this.prisma.chat.update({
+      where: { primarykey: chatId },
+      data: {
+        members: {
+          create: userIds.map((id) => ({
+            account: id,
+          })),
+        },
+      },
+    });
+  }
+
   async isChatMember(userId: string, chatId: string): Promise<boolean> {
     const member = await this.prisma.chatMember.findFirst({
       where: {
@@ -269,5 +329,68 @@ export class ChatService {
       },
     });
     return !!member;
+  }
+
+  async removeMemberFromGroup(
+    chatId: string,
+    userId: string,
+    requesterId: string,
+  ): Promise<void> {
+    // Проверяем, что запрашивающий является админом чата
+    const chat = await this.prisma.chat.findUnique({
+      where: { primarykey: chatId },
+      select: { account: true },
+    });
+
+    if (!chat) {
+      throw new NotFoundException('Chat not found');
+    }
+
+    if (chat.account !== requesterId) {
+      throw new ForbiddenException('Only chat admin can remove members');
+    }
+
+    if (userId === requesterId) {
+      throw new BadRequestException('Admin cannot remove themselves');
+    }
+
+    await this.prisma.chatMember.deleteMany({
+      where: {
+        chatId,
+        account: userId,
+      },
+    });
+
+    // Отправляем уведомление через WebSocket
+    this.server
+      ?.to(`chat:${chatId}`)
+      .emit('chat:member_removed', { chatId, userId });
+  }
+
+  async deleteChat(chatId: string, requesterId: string): Promise<void> {
+    // Проверяем, что запрашивающий является админом чата
+    const chat = await this.prisma.chat.findUnique({
+      where: { primarykey: chatId },
+      select: { account: true, isPrivate: true }
+    });
+
+    if (!chat) {
+      throw new NotFoundException('Chat not found');
+    }
+
+    if (chat.account !== requesterId) {
+      throw new ForbiddenException('Only chat creator can delete the chat');
+    }
+
+    // Удаляем все связанные данные
+    await this.prisma.$transaction([
+      this.prisma.chatMessage.deleteMany({ where: { chatId } }),
+      this.prisma.chatMember.deleteMany({ where: { chatId } }),
+      this.prisma.chat.delete({ where: { primarykey: chatId } })
+    ]);
+
+    // Отправляем уведомление через WebSocket
+    this.server?.to(`chat:${chatId}`).emit('chat:deleted', { chatId });
+    this.server?.in(`chat:${chatId}`).disconnectSockets(true);
   }
 }

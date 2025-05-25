@@ -301,6 +301,28 @@ export default function Projects() {
     }
   };
 
+  if (loading) return (
+    <div className="page-container">
+      <div className="scroll-container">
+        <div className="profile-container">
+          <div className="tasks-wrapper">
+            <div className="loading-container">
+              <div className="wave-loading">
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <div className="loading-text">Загружаем проекты...</div>
+            </div>
+          </div>
+          <div className="calendar-wrapper"></div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="projects-container">
       <div className="projects-table-container">

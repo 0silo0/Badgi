@@ -44,7 +44,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ userData, onClose, 
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
-        setErrors({ ...errors, avatarUrl: 'Файл слишком большой (макс. 5MB)' });
+        setErrors({ ...errors, avatarUrl: 'Файл слишком большой (макс. 10MB)' });
         return;
       }
       

@@ -47,8 +47,15 @@ export class FileHierarchyController {
     @Req() req: Request,
   ): Promise<FileHierarchyResponseDto> {
     const userId = this.extractUserId(req);
+
+    const decodedName = Buffer.from(file.originalname, 'binary').toString(
+      'utf8',
+    );
+    console.log('Decoded filename:', decodedName);
     console.log(file)
     console.log(encodeURIComponent(file.originalname))
+
+    file.originalname = decodedName;
     return this.s3Service.uploadToHierarchy(file, userId, parentId);
   }
 

@@ -5,6 +5,8 @@ import { Project } from '../../types/project';
 import { useAuth } from '../../context/AuthContext';
 import './styles/projectPage.scss';
 import { ProjectSettingsModal } from './ProjectSettingsModal';
+import { TasksApi } from '../../api/tasks.api';
+import { Task as TaskType } from '../../types/task';
 
 export default function ProjectPage() {
   const { projectId } = useParams();
@@ -36,7 +38,27 @@ export default function ProjectPage() {
     setSettingsOpen(false);
   };
 
-  if (loading) return <div>Загрузка...</div>;
+  if (loading) return (
+  <div className="page-container">
+    <div className="scroll-container">
+      <div className="profile-container">
+        <div className="tasks-wrapper">
+          <div className="loading-container">
+            <div className="wave-loading">
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <div className="loading-text">Загружаем проект...</div>
+          </div>
+        </div>
+        <div className="calendar-wrapper"></div>
+      </div>
+    </div>
+  </div>
+  );
   if (!project) return <div>Проект не найден</div>;
 
   return (

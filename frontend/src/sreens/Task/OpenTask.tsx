@@ -19,7 +19,7 @@ import UserSearchInput from '../../components/UserSearchInput';
 import { User } from '../../types/calendar';
 
 interface OpenTaskProps {
-  // task: Task;
+  isInProject?: boolean;
   taskId?: string;
   isCreating: boolean;
   projects: Project[];
@@ -40,7 +40,7 @@ const FileIcon = ({ type }: { type: string }) => {
 };
 
 const OpenTask: React.FC<OpenTaskProps> = ({ 
- // task,
+  isInProject,
   taskId,
   isCreating,
   projects,

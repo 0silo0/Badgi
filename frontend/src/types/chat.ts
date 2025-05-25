@@ -16,9 +16,12 @@ export interface Chat {
     accountRef: User;
   }>;
   messages: Array<{
+    account?: User;
+    accountRef?: User;
     content: string;
     createdAt: Date;
   }>;
+  account?: string;
 }
 
 export interface Message {

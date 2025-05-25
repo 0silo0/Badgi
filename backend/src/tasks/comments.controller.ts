@@ -55,11 +55,25 @@ export class CommentsController {
     @Req() req: Request,
   ) {
     const userId = this.extractUserId(req);
+    const processedFiles =
+      files?.map((file) => {
+        const decodedName = Buffer.from(file.originalname, 'binary').toString(
+          'utf8',
+        );
+        console.log('Decoded filename:', decodedName);
+        console.log('Original filename:', file.originalname);
+
+        return {
+          ...file,
+          originalname: decodedName,
+        };
+      }) || [];
+
     return this.commentsService.createComment(
       taskId,
       userId,
       createCommentDto.comment,
-      files,
+      processedFiles,
     );
   }
 

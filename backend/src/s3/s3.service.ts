@@ -1,17 +1,20 @@
-import { Injectable, ForbiddenException, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ForbiddenException,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   S3Client,
   PutObjectCommand,
   GetObjectCommand,
   DeleteObjectCommand,
-  ListObjectVersionsCommand,
   HeadObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { ConfigService } from '@nestjs/config';
 import { Readable } from 'stream';
 import { PrismaService } from '../prisma/prisma.service';
-import { FileHierarchy } from '@prisma/client';
 import { FileHierarchyResponseDto } from './dto/FileHierarchyResponse.dto';
 import { CreateFolderDto } from './dto/createfolder.dto';
 
@@ -454,20 +457,6 @@ export class S3Service {
       : []),
     ]);
   }
-
-  // private async markAsDeleted(itemId: string): Promise<void> {
-  //   const item = await this.prisma.fileHierarchy.update({
-  //     where: { primarykey: itemId },
-  //     data: { isDeleted: true },
-  //     include: { children: true },
-  //   });
-
-  //   if (item.type === 'FOLDER') {
-  //     for (const child of item.children) {
-  //       await this.markAsDeleted(child.primarykey);
-  //     }
-  //   }
-  // }
 
   async updateItemName(
     id: string,
