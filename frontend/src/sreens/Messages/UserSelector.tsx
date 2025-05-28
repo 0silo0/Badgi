@@ -7,11 +7,13 @@ import { useAuth } from '../../context/AuthContext';
 export const UserSelector = ({ 
   onSelect, 
   userChats,
-  onSelectChat 
+  onSelectChat,
+  onChatCreated
 }: { 
   onSelect: (userId: string) => void;
   userChats: Chat[];
   onSelectChat: (chatId: string) => void;
+  onChatCreated?: () => void;
 }) => {
   const { user: authUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
@@ -91,7 +93,11 @@ export const UserSelector = ({
         title: groupName,
         memberIds: selectedUsers.map(u => u.id),
       });
-      onSelectChat(res.data.chatId); // Переходим в новый чат
+      console.log('asdfa sdf asdf sdaf fsd - ', res.data)
+      onSelectChat(res.data.primarykey);
+      if (onChatCreated) {
+        onChatCreated();
+      }
     } catch (error) {
       console.error('Failed to create group:', error);
     }
@@ -263,12 +269,21 @@ export const UserSelector = ({
           <div className="group-members">
             {selectedUsers.map((user) => (
               <div key={user.id} className="selected-user">
+                <div className="user-avatar">
+                  {user.avatarUrl ? (
+                    <img src={user.avatarUrl} alt={`${user.firstName} ${user.lastName}`} />
+                  ) : (
+                    <div className="avatar-placeholder">
+                      {user.firstName?.[0]}{user.lastName?.[0]}
+                    </div>
+                  )}
+                </div>
                 {user.firstName} {user.lastName}
                 <button onClick={() => removeUser(user.id)}>×</button>
               </div>
             ))}
           </div>
-          <button 
+          <button
             onClick={handleCreateGroup}
             disabled={!groupName || selectedUsers.length === 0}
           >
@@ -305,9 +320,9 @@ export const UserSelector = ({
               <div className="user-info">
                 <div className="user-login">@{user.login}</div>
                 <div className="user-name">{user.firstName} {user.lastName}</div>
-                {activeTab === 'group' && (
+                {/* {activeTab === 'group' && (
                   <div className="user-add-hint">Добавить в группу</div>
-                )}
+                )} */}
               </div>
             </div>
           ))

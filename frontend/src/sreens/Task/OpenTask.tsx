@@ -56,7 +56,7 @@ const OpenTask: React.FC<OpenTaskProps> = ({
     description: '',
     status: 'todo',
     type: 'Задача',
-    color: '#6366f1',
+    color: '',
     project: '',
     stage: '',
     startDate: new Date(),
@@ -107,8 +107,10 @@ const OpenTask: React.FC<OpenTaskProps> = ({
         try {
           setIsLoading(true);
           const loadedTask = await TasksApi.getTaskById(taskId);
+          console.log('sdfsd ', loadedTask)
           setTask(loadedTask);
           setEditedTask(loadedTask);
+          setSelectedColor(loadedTask.color);
 
           const project = projects.find(p => p.primarykey === loadedTask.project);
           setProjectSearchTerm(project?.name || '');
@@ -148,12 +150,13 @@ const OpenTask: React.FC<OpenTaskProps> = ({
     setErrors({});
     try {
       setIsLoading(true);
+      console.log(editedTask)
       const taskData = {
             title: editedTask.title || '',
             description: editedTask.description || '',
             status: editedTask.status || 'todo',
-            type: editedTask.type as Task['type'], // Приводим тип к допустимым значениям
-            color: editedTask.color || '#6366f1',
+            type: editedTask.type as Task['type'],
+            color: selectedColor || '#6366f1',
             project: editedTask.project || '',
             stage: editedTask.stage || '',
             startDate: editedTask.startDate ? new Date(editedTask.startDate) : new Date(),

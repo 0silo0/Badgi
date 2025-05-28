@@ -288,8 +288,24 @@
   border: 1px solid #e2e8f0;
 }
 
+.create-group button {
+  margin-top: 20px;
+  padding: 10px;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+}
+
+.create-group button:hover {
+  outline: none;
+  border-color: #4299e1;
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+  background-color: rgb(209, 253, 232);
+}
+
 .create-group input[type="text"] {
-  width: 100%;
+  width: 94%;
   padding: 12px 16px;
   margin-bottom: 16px;
   border: 1px solid #e2e8f0;
@@ -324,6 +340,7 @@
 
 .selected-user button {
   margin-left: 8px;
+  margin-top: 4px;
   background: none;
   border: none;
   color: #4299e1;

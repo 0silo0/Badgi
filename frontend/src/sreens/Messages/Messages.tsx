@@ -12,12 +12,15 @@ const formatMessageDate = (date: Date): string => {
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
+
+  // console.log('b = ',today, yesterday)
   
   const messageDate = new Date(date);
   messageDate.setHours(0, 0, 0, 0);
   today.setHours(0, 0, 0, 0);
   yesterday.setHours(0, 0, 0, 0);
 
+  // console.log('a = ', messageDate.getTime(), yesterday.getTime())
   if (messageDate.getTime() === today.getTime()) {
     return 'Сегодня';
   } else if (messageDate.getTime() === yesterday.getTime()) {
@@ -50,13 +53,15 @@ const groupMessagesByDate = (messages: Message[]) => {
 };
 
 export const GroupChatInfo = ({ chat, onRemoveMember, onDeleteChat }: {
-  chat: Chat;
+  chat?: Chat;
   onRemoveMember: (memberId: string) => void;
   onDeleteChat: () => void;
 }) => {
   const { user: authUser } = useAuth();
   const [showMenu, setShowMenu] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
+
+  if (!chat) return null;
 
   const isAdmin = chat.account === authUser?.id;
 
@@ -144,15 +149,17 @@ export const Messages = () => {
   const { messages, sendMessage, isConnected } = useChat(currentChat);
   const [currentRecipient, setCurrentRecipient] = useState<User | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
+  const [loadingChats, setLoadingChats] = useState(true);
 
   const loadUserChats = useCallback(async () => {
     try {
+      setLoadingChats(true);
       const response = await apiClient.get('/chat/my');
-      console.log(response.data)
       setUserChats(response.data);
     } catch (error) {
       console.error('Failed to load user chats:', error);
+    } finally {
+      setLoadingChats(false);
     }
   }, []);
 
@@ -241,14 +248,26 @@ export const Messages = () => {
   };
 
   if (!currentChat) {
-    return (
+    return loadingChats ? (
+      <div>Загрузка чатов...</div>
+    ) : (
       <UserSelector 
         onSelect={handleStartChat} 
         userChats={userChats} 
-        onSelectChat={handleSelectChat} 
+        onSelectChat={handleSelectChat}
+        onChatCreated={loadUserChats}
       />
     );
-  };
+  }
+
+  if (loadingChats) {
+    return <div>Загрузка...</div>;
+  }
+
+  const currentChatData = userChats.find(c => c.primarykey === currentChat);
+  if (!currentChatData) {
+    return <div>Чат не найден</div>;
+  }
 
   const groupedMessages = groupMessagesByDate(
     messages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
@@ -366,7 +385,7 @@ export const Messages = () => {
             <div
               key={msg.id}
               className={`message ${msg.account.id === authUser?.id ? 'my-message' : 'other-message'}`}>
-              {msg.account.id !== authUser?.id && (
+              {msg.account.id && msg.account.id !== authUser?.id && (
                 <img
                   src={msg.account.avatarUrl || '/default-avatar.png'} 
                   alt={msg.account.firstName}
@@ -374,7 +393,7 @@ export const Messages = () => {
                 />
               )}
               <div className="message-content-wrapper">
-                {msg.account.id !== authUser?.id && (
+                {msg.account.id && msg.account.id !== authUser?.id && (
                   <div className="message-author">{msg.account.firstName}</div>
                 )}
                 <div className="message-content">{msg.content}</div>
