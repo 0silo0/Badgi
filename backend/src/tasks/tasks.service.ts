@@ -324,4 +324,45 @@ export class TasksService {
       },
     });
   }
+
+  async getTasksByMilestone(milestoneId: string) {
+    const raw = await this.prisma.task.findMany({
+      where: { milestoneId },
+      orderBy: { startDate: 'asc' },
+      include: {
+        assignedToRef: {
+          select: {
+            primarykey: true,
+            firstName: true,
+            lastName: true,
+            avatarUrl: true,
+          },
+        },
+        _count: {
+          select: {
+            comments: true,
+            attachments: true,
+          },
+        },
+      },
+    });
+
+    const tasks = raw.map(task => {
+      const { assignedToRef, _count, ...rest } = task;
+      return {
+        ...rest,
+        // переименовываем и формируем объект assigned
+        commentsCount: _count.comments,
+        attachmentsCount: _count.attachments,
+        assigned: assignedToRef
+          ? {
+              name: `${assignedToRef.firstName} ${assignedToRef.lastName}`.trim(),
+              avatarUrl: assignedToRef.avatarUrl,
+            }
+          : undefined,
+      };
+    });
+    // console.log(tasks)
+    return tasks;
+  }
 }

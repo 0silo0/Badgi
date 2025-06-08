@@ -64,10 +64,17 @@ export const createApiClient = (logoutFn?: () => Promise<void>) => {
   });
 
   const setupSocket = (token: string): Socket => {
-    return io(`${process.env.REACT_APP_WS_URL || 'http://localhost:4132/api'}/chat`, { // Убрали /api
+    const socket = io(`${process.env.REACT_APP_WS_URL}/chat`, {
       auth: { token },
       transports: ['websocket'],
     });
+
+    // Добавляем обработчики для документов
+    socket.on('doc:update', (data) => {
+      console.log('Получено обновление документа', data);
+    });
+
+    return socket;
   };
 
   // Interceptor для добавления токена

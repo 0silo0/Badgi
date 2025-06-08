@@ -12,6 +12,8 @@ import {
   ProjectTeamDto,
 } from './dto/create-project.dto';
 import { Prisma, TeamMember } from '@prisma/client';
+import { CreateMilestoneDto } from './dto/create-milestone.dto';
+import { UpdateMilestoneDto } from './dto/update-milestone.dto';
 
 @Injectable()
 export class ProjectsService {
@@ -489,5 +491,56 @@ export class ProjectsService {
       throw new ForbiddenException('Доступ запрещен');
 
     return project;
+  }
+
+  //Milestones
+  async getByProject(projectId: string) {
+    return this.prisma.milestone.findMany({
+      where: { projectId },
+      orderBy: { date: 'asc' },
+    });
+  }
+
+  async create(projectId: string, dto: CreateMilestoneDto) {
+    // убедимся, что проект существует
+    const project = await this.prisma.project.findUnique({
+      where: { primarykey: projectId },
+    });
+    if (!project) throw new NotFoundException('Проект не найден');
+
+    return this.prisma.milestone.create({
+      data: {
+        projectId,
+        title: dto.title,
+        description: dto.description,
+        date: new Date(dto.date),
+        dateEnd: new Date(dto.dateEnd),
+        status: dto.status,
+      },
+    });
+  }
+
+  async update(id: string, dto: UpdateMilestoneDto) {
+    const exists = await this.prisma.milestone.findUnique({ where: { id } });
+    if (!exists) throw new NotFoundException('Веха не найдена');
+
+    return this.prisma.milestone.update({
+      where: { id },
+      data: {
+        title: dto.title,
+        description: dto.description,
+        date: dto.date ? new Date(dto.date) : undefined,
+        dateEnd: dto.dateEnd ? new Date(dto.dateEnd) : undefined,
+        status: dto.status,
+      },
+    });
+  }
+
+  async delete(id: string) {
+    const exists = await this.prisma.milestone.findUnique({ where: { id } });
+    if (!exists) throw new NotFoundException('Веха не найдена');
+
+    await this.prisma.milestone.delete({ where: { id } });
+    return { deleted: true };
   }
 }

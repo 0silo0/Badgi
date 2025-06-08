@@ -13,6 +13,8 @@ import {
   UnauthorizedException,
   Res,
   Patch,
+  NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Request, Response } from 'express';
@@ -112,12 +114,87 @@ export class FileHierarchyController {
     return this.s3Service.hardDeleteItem(itemId, userId);
   }
 
-  //   @Get('breadcrumbs/:itemId')
-  //   async getBreadcrumbs(
-  //     @Param('itemId') itemId: string,
-  //   ): Promise<BreadcrumbDto[]> {
-  //     return this.s3Service.getBreadcrumbs(itemId);
-  //   }
+  @Get('content/:id')
+  async getFileContent(
+    @Param('id') id: string,
+    @Req() req: Request,
+  ): Promise<{ content: string }> {
+    const userId = this.extractUserId(req);
+
+    // 1. Получаем информацию о файле из иерархии
+    const hierarchyItem = await this.s3Service.prisma.fileHierarchy.findUnique({
+      where: { primarykey: id },
+      include: { file: true },
+    });
+
+    if (!hierarchyItem || hierarchyItem.ownerId !== userId) {
+      throw new NotFoundException('File not found or access denied');
+    }
+
+    if (hierarchyItem.type !== 'FILE' || !hierarchyItem.file) {
+      throw new BadRequestException('Only files can be edited');
+    }
+
+    // 2. Проверяем MIME-тип (разрешаем только текстовые файлы)
+    const allowedMimeTypes = [
+      'text/plain',
+      'text/html',
+      'text/css',
+      'text/javascript',
+      'application/json',
+      'application/xml',
+    ];
+
+    if (
+      !hierarchyItem.file ||
+      !allowedMimeTypes.some((type) =>
+        hierarchyItem.file!.mimeType.includes(type),
+      )
+    ) {
+      throw new BadRequestException('File type not supported for editing');
+    }
+
+    // 3. Читаем содержимое файла из S3
+    const content = await this.s3Service.readFileContent(
+      hierarchyItem.file.path,
+    );
+
+    return { content };
+  }
+
+  @Patch('content/:id')
+  async updateFileContent(
+    @Param('id') id: string,
+    @Body() dto: { content: string },
+    @Req() req: Request,
+  ): Promise<{ success: boolean }> {
+    const userId = this.extractUserId(req);
+
+    // 1. Проверяем права и существование файла
+    const hierarchyItem = await this.s3Service.prisma.fileHierarchy.findUnique({
+      where: { primarykey: id },
+      include: { file: true },
+    });
+
+    if (!hierarchyItem || hierarchyItem.ownerId !== userId) {
+      throw new NotFoundException('File not found or access denied');
+    }
+
+    if (hierarchyItem.type !== 'FILE' || !hierarchyItem.file) {
+      throw new BadRequestException('Only files can be edited');
+    }
+
+    // 2. Обновляем содержимое в S3
+    await this.s3Service.writeFileContent(hierarchyItem.file.path, dto.content);
+
+    // 3. Обновляем метаданные в БД
+    await this.s3Service.prisma.file.update({
+      where: { primarykey: hierarchyItem.file.primarykey },
+      data: {},
+    });
+
+    return { success: true };
+  }
 
   private extractUserId(req: Request): string {
     const userId = req.user?.primarykey;

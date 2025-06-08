@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { IsString, IsOptional, IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsUUID } from 'class-validator';
 
 export enum TaskType {
   TASK = 'Задача',
@@ -64,6 +64,10 @@ export class CreateTaskDto {
   @IsString()
   @IsOptional()
   assignedTo?: string;
+
+  @IsOptional()
+  @IsUUID()
+  milestoneId?: string;
 }
 
 export class UpdateTaskDto extends CreateTaskDto {}

@@ -11,6 +11,17 @@ export const FileApi = {
     return response.data.map((node: any) => this.mapFileNode(node));
   },
 
+  async getFileContent(id: string): Promise<string> {
+    const response = await apiClient.get<{ content: string }>(
+      `/file-hierarchy/content/${id}`
+    );
+    return response.data.content;
+  },
+
+  async updateFileContent(id: string, content: string): Promise<void> {
+    await apiClient.patch(`/file-hierarchy/content/${id}`, { content });
+  },
+
   async createFolder(dto: { name: string; parentId?: string }): Promise<FileHierarchyResponseDto> {
     const response = await apiClient.post('/file-hierarchy/folders', dto);
     return this.mapFileNode(response.data);

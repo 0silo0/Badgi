@@ -13,6 +13,9 @@ export interface Task {
   startDate: Date;
   endDate: Date;
   dueDate?: Date;
+  milestoneId?: string;
+  commentsCount?: number;
+  attachmentsCount?: number;
   attachments?: FileAttachment[];
   assigned?: {
     id: string;

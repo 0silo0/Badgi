@@ -25,7 +25,7 @@ export class S3Service {
 
   constructor(
     private readonly configService: ConfigService,
-    private readonly prisma: PrismaService,
+    public readonly prisma: PrismaService,
   ) {
     const endpoint = this.getRequiredConfig('AWS_ENDPOINT');
     const region = this.getRequiredConfig('AWS_REGION');
@@ -537,6 +537,54 @@ export class S3Service {
       url: hierarchyItem.file.path,
       key: hierarchyItem.file.path,
     };
+  }
+
+  async readFileContent(key: string): Promise<string> {
+    try {
+      const exkey = this.extractS3Key(key)
+      const response = await this.s3.send(
+        new GetObjectCommand({
+          Bucket: this.bucketName,
+          Key: exkey,
+        }),
+      );
+
+      if (!response.Body) {
+        throw new Error('Empty response body from S3');
+      }
+
+      return await response.Body.transformToString();
+    } catch (error) {
+      throw new Error(`Failed to read file content: ${error.message}`);
+    }
+  }
+
+  async writeFileContent(key: string, content: string): Promise<void> {
+    try {
+      const exkey = this.extractS3Key(key)
+      await this.s3.send(
+        new PutObjectCommand({
+          Bucket: this.bucketName,
+          Key: exkey,
+          Body: content,
+          ContentType: 'text/plain',
+        }),
+      );
+    } catch (error) {
+      throw new Error(`Failed to write file content: ${error.message}`);
+    }
+  }
+
+  private extractS3Key(url: string): string {
+    // Для URL формата: https://s3.cloud.ru/bucket-maps/badgi/avatars/...
+    const urlObj = new URL(url);
+    const pathParts = urlObj.pathname.split('/');
+
+    // Находим индекс 'badgi' в пути
+    const badgiIndex = pathParts.indexOf('badgi');
+
+    // Извлекаем часть после 'badgi/avatars/'
+    return `badgi/${pathParts[badgiIndex + 1]}/${pathParts.slice(badgiIndex + 2).join('/')}`;
   }
 
   private toResponseDto(item: any): FileHierarchyResponseDto {

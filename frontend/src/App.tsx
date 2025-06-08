@@ -24,6 +24,8 @@ import FileManager from './sreens/FileManager/FileManager';
 import ProjectPage from './sreens/Projects/ProjectPage';
 import ProjectBoard from './sreens/Projects/ProjectBoard';
 import { Analytics } from './sreens/Projects/Analytics';
+import GanttPage from './sreens/Projects/GantPage';
+import Milestones from './sreens/Projects/Milestones';
 
 const ProtectedLayout = () => {
   const { isAuthenticated } = useAuth();
@@ -59,6 +61,8 @@ const AppRoutes = () => {
           <Route path="/projects/:projectId" element={<ProjectPage />}>
             <Route index element={<ProjectBoard />} />
             <Route path="analytics" element={<Analytics />} />
+            <Route path="gant" element={<GanttPage />} />
+            <Route path="milestones" element={<Milestones />} />
           </Route>
           <Route path="/files" element ={<FileManager />} />
         </Route>

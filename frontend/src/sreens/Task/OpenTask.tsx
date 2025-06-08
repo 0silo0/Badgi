@@ -17,6 +17,9 @@ import { Task, FileAttachment } from '../../types/task';
 import { FaFile, FaFileImage, FaFilePdf, FaFileAlt } from 'react-icons/fa';
 import UserSearchInput from '../../components/UserSearchInput';
 import { User } from '../../types/calendar';
+import { Milestone } from '../../types/milestone';
+import { MilestonesApi } from '../../api/milestones';
+import dayjs, { Dayjs } from 'dayjs';
 
 interface OpenTaskProps {
   isInProject?: boolean;
@@ -71,6 +74,7 @@ const OpenTask: React.FC<OpenTaskProps> = ({
   const [projectSearchTerm, setProjectSearchTerm] = useState('');
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
   const [errors, setErrors] = useState<{ title?: string }>({});
+  const [milestones, setMilestones] = useState<Milestone[]>([])
   
   const colors = ['#6366f1', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
   const statusOptions = ['todo', 'in_progress', 'done'];
@@ -114,6 +118,11 @@ const OpenTask: React.FC<OpenTaskProps> = ({
 
           const project = projects.find(p => p.primarykey === loadedTask.project);
           setProjectSearchTerm(project?.name || '');
+
+          if (project) {
+            const milestones = await MilestonesApi.getByProject(project.primarykey)
+            setMilestones(milestones);
+          }
         } catch (error) {
           console.error('Ошибка загрузки задачи:', error);
         } finally {
@@ -163,6 +172,7 @@ const OpenTask: React.FC<OpenTaskProps> = ({
             endDate: editedTask.endDate ? new Date(editedTask.endDate) : new Date(),
             priority: editedTask.priority || 'medium',
             assignedTo: editedTask.assigned?.id,
+            milestoneId: editedTask.milestoneId,
             //attachments: editedTask.attachments || [],
             //attendees: editedTask.attendees || [],
             // Добавляем приведение для дат
@@ -414,6 +424,29 @@ const OpenTask: React.FC<OpenTaskProps> = ({
               </option>
             ))}
           </select>
+        </div>
+
+        <div className="form-group">
+          <label>Веха</label>
+          {isEditing ? (
+            <select
+              value={editedTask.milestoneId || ''}
+              onChange={e => handleChange('milestoneId', e.target.value)}
+            >
+              <option value="">Без вехи</option>
+              {milestones.map(m => (
+                <option key={m.id} value={m.id}>
+                  {m.title} ({dayjs(m.date).format('DD.MM.YYYY')})
+                </option>
+              ))}
+            </select>
+          ) : (
+            <div>
+              {editedTask.milestoneId
+                ? milestones.find(m => m.id === editedTask.milestoneId)?.title
+                : '—'}
+            </div>
+          )}
         </div>
 
         <div className="form-group">

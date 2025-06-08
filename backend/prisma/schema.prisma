@@ -57,6 +57,7 @@ model Account {
   CommentAttachment CommentAttachment[] @relation("commentAttachment")
   File File[]
   FileHierarchy FileHierarchy[]
+  Milestone Milestone[]
 }
 
 model Role {
@@ -144,6 +145,7 @@ model Project {
 
   @@map("projects")
   ProjectMember ProjectMember[]
+  Milestone Milestone[]
 }
 
 model Task {
@@ -167,6 +169,8 @@ model Task {
   stage        String?
   createdAt    DateTime      @default(now()) @map("createdat")
   updatedAt    DateTime      @default(now()) @updatedAt @map("updatedat")
+  milestoneId   String?    @map("milestoneid")
+  milestone     Milestone? @relation(fields: [milestoneId], references: [id])
   
   comments     TaskComment[]
   attachments  TaskAttachment[]
@@ -402,4 +406,28 @@ model FileHierarchy {
 enum FileType {
   FILE
   FOLDER
+}
+
+/// Добавляем модель Milestone для вех проекта
+model Milestone {
+  id           String   @id @default(uuid()) @map("primarykey")
+  projectId    String   @map("project_id")       // Связь с проектом
+  project      Project  @relation(fields: [projectId], references: [primarykey])
+
+  title        String   @map("title")            // Название вехи
+  description  String?  @map("description")      // Описание (необязательно)
+  date         DateTime @map("date")             // Дата начала
+  dateEnd       DateTime @map("dateend") 
+  status       String   @default("Planned") @map("status")
+
+  assigneeId   String?  @map("assignee_id")      // Ответственный (необязательно)
+  assignee     Account? @relation(fields: [assigneeId], references: [primarykey])
+
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt  @map("updated_at")
+
+  @@map("milestones")                              // Имя таблицы в базе
+  @@index([projectId], name: "idx_milestones_project")
+  @@index([date],      name: "idx_milestones_date")
+  Task Task[]
 }

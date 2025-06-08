@@ -249,7 +249,25 @@ export const Messages = () => {
 
   if (!currentChat) {
     return loadingChats ? (
-      <div>Загрузка чатов...</div>
+      <div className="page-container">
+      <div className="scroll-container">
+        <div className="profile-container">
+          <div className="tasks-wrapper">
+            <div className="loading-container">
+              <div className="wave-loading">
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <div className="loading-text">Загружаем чаты...</div>
+            </div>
+          </div>
+          <div className="calendar-wrapper"></div>
+        </div>
+      </div>
+    </div>
     ) : (
       <UserSelector 
         onSelect={handleStartChat} 

@@ -91,6 +91,16 @@ export default function ProjectPage() {
         >
           Аналитика
         </NavLink>
+        <NavLink 
+          to="gant"
+          end
+          className={({ isActive }: { isActive: boolean }) => isActive ? 'active' : ''}
+        >
+          Гант
+        </NavLink>
+        <NavLink to="milestones" end className={({ isActive }) => isActive ? 'active' : ''}>
+          Вехи
+        </NavLink>
         {project.createdBy === user?.id && (
           <button 
             className={`settings-tab ${settingsOpen ? 'active' : ''}`}

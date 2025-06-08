@@ -3,6 +3,7 @@ import { FiFolder, FiFile, FiPlus, FiChevronRight, FiChevronDown, FiTrash2, FiEd
 import './FileManager.scss';
 import { FileHierarchyResponseDto } from '../../types/fileHierarchy';
 import { FileApi } from '../../api/fileHierarchy';
+import { EditorModal } from './EditorModal';
 
 
 type DragItem = {
@@ -16,6 +17,22 @@ interface TreeNodeProps {
   parentId: string | 'root';
 }
 
+const isEditableFile = (node: FileHierarchyResponseDto): boolean => {
+  if (node.type !== 'file') return false;
+  
+  const editableTypes = [
+    'text/plain',
+    'text/html',
+    'text/css',
+    'application/json',
+    'application/javascript'
+  ];
+  
+  return editableTypes.some(type => 
+    node.mimeType?.toLowerCase().includes(type)
+  );
+};
+
 const FileManager = () => {
   // const [rootFolder] = useState(() => ({
   //   id: 'root',
@@ -25,6 +42,11 @@ const FileManager = () => {
   //   children: [] as FileNode[],
   // }));
   //const [files, setFiles] = useState<FileNode[]>([rootFolder]);
+  const [editingFile, setEditingFile] = useState<{
+    id: string;
+    content: string;
+    isPlainText: boolean;
+  } | null>(null);
   const [files, setFiles] = useState<FileHierarchyResponseDto[]>([]);
   const [dragItem, setDragItem] = useState<DragItem | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
@@ -339,6 +361,24 @@ const FileManager = () => {
     }
   };
 
+  const fetchFileContent = async (fileId: string): Promise<string> => {
+    try {
+      return await FileApi.getFileContent(fileId);
+    } catch (error) {
+      console.error('Ошибка загрузки контента:', error);
+      return '';
+    }
+  };
+
+  const saveFileContent = async (fileId: string, content: string): Promise<void> => {
+    try {
+      await FileApi.updateFileContent(fileId, content);
+    } catch (error) {
+      console.error('Ошибка сохранения:', error);
+      throw error;
+    }
+  };
+
   const FileTreeNode = ({ node, depth = 0, parentId }: TreeNodeProps) => {
     const handleFolderClick = () => {
       if (node.type === 'folder') {
@@ -403,6 +443,24 @@ const FileManager = () => {
 
           {node.type === 'file' && (
             <div className="file-actions">
+              {isEditableFile(node) && (
+                <button
+                  className="edit-button"
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    const content = await fetchFileContent(node.id);
+                    setEditingFile({ 
+                      id: node.id, 
+                      content,
+                      isPlainText: node.mimeType?.toLowerCase() === 'text/plain'
+                    });
+                  }}
+                  title="Редактировать"
+                >
+                  <FiEdit />
+                </button>
+              )}
+
               {/* Кнопка предпросмотра без изменений */}
               <button
                 className="preview-button"
@@ -524,6 +582,18 @@ const FileManager = () => {
           <FileTreeNode key={node.id} node={node} parentId="root" />
         ))}
       </div>
+
+      {editingFile && (
+        <EditorModal
+          content={editingFile.content}
+          onSave={async (content) => {
+            await saveFileContent(editingFile.id, content);
+            setEditingFile(null);
+          }}
+          onClose={() => setEditingFile(null)}
+          isPlainText={editingFile.isPlainText}
+        />
+      )}
     </div>
   );
 };
