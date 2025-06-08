@@ -17,6 +17,7 @@ export interface Task {
   commentsCount?: number;
   attachmentsCount?: number;
   attachments?: FileAttachment[];
+  updatedAt?: Date;
   assigned?: {
     id: string;
     name: string;
