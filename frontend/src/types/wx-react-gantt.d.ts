@@ -9,7 +9,7 @@ declare module 'wx-react-gantt' {
     duration?: number;
     progress?: number;
     type: string;
-    parent?: number;
+    parent?: string | number;
     open?: boolean;
   }
 

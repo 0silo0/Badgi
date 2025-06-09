@@ -241,58 +241,24 @@
 }
 
 
-// модальное окно редактирвоания документа
 .editor-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  // затемнённый фон
+  background: rgba(0,0,0,0.6);
   display: flex;
-  flex-direction: column;
-  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.3s ease;
 
-  &__header {
+  &__container {
     background: #fff;
-    padding: 1rem;
+    width: 90%;
+    max-width: 800px;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    overflow: hidden;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  &__content {
-    flex: 1;
-    background: white;
-    margin: 0 auto;
-    width: 80%;
-    max-width: 900px;
-    padding: 1rem;
-    overflow-y: auto;
-  }
-
-  .tiptap {
-    min-height: 300px;
-    padding: 1rem;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    white-space: pre-wrap;
-    font-family: monospace;
-    line-height: 1.5;
-    
-    /* Сохраняем все пробелы и переносы */
-    * {
-      white-space: pre-wrap !important;
-    }
-    
-    p {
-      margin: 0 0 1em 0;
-      white-space: pre-wrap;
-    }
-    
-    &:focus {
-      outline: none;
-    }
+    flex-direction: column;
+    animation: slideDown 0.3s ease;
   }
 }
 
@@ -334,4 +300,84 @@
       margin-bottom: 1em;
     }
   }
+}
+
+.editor-modal__header {
+  padding: 0.75rem 1.25rem;
+  background: #4f46e5;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 500;
+  }
+
+  &__actions {
+    button {
+      background: transparent;
+      border: none;
+      color: white;
+      font-size: 1rem;
+      margin-left: 0.5rem;
+      cursor: pointer;
+      transition: transform 0.1s;
+
+      &:hover {
+        transform: scale(1.1);
+      }
+
+      svg {
+        vertical-align: middle;
+        margin-right: 0.25rem;
+      }
+    }
+  }
+}
+
+.editor-modal__container {
+  width: 95%;            // чуть больше
+  max-width: 1000px;     // увеличили максимум
+  height: 90vh;          // занимать 90% высоты экрана
+  display: flex;
+  flex-direction: column;
+}
+.editor-modal__content {
+  flex: 1;               // растягиваем под весь контейнер
+  min-height: 0;         // чтобы scroll внутри работал корректно
+  overflow-y: auto;
+}
+.editor-modal__header {
+  flex: 0 0 auto;       // фиксированная высота
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.save-button {
+  background: #10b981;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 500;
+  transition: background 0.2s;
+  &:hover { background: #059669; }
+}
+.close-button {
+  background: transparent;
+  color: #6b7280;
+  font-size: 1.25rem;
+  &:hover { color: #374151; }
+}
+
+@keyframes fadeIn {
+  from { background: rgba(0,0,0,0); }
+  to   { background: rgba(0,0,0,0.6); }
+}
+@keyframes slideDown {
+  from { transform: translateY(-20px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
 }

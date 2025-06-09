@@ -591,7 +591,7 @@ const FileManager = () => {
             setEditingFile(null);
           }}
           onClose={() => setEditingFile(null)}
-          isPlainText={editingFile.isPlainText}
+          //isPlainText={editingFile.isPlainText}
         />
       )}
     </div>

@@ -190,7 +190,7 @@ export default function ProjectBoard() {
                 <span></span>
                 <span></span>
               </div>
-              <div className="loading-text">Загружаем проекты...</div>
+              <div className="loading-text">Загружаем доску...</div>
             </div>
           </div>
           <div className="calendar-wrapper"></div>
