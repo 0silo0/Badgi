@@ -20,6 +20,7 @@ async function bootstrap() {
 
   app.enableCors({
     origin: [
+      'https://goal-path.ru',
       'http://localhost:3000',
       'http://localhost:4000',
       'http://localhost:3001',
