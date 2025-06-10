@@ -15,6 +15,7 @@ import {
   Patch,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Request, Response } from 'express';
@@ -25,6 +26,7 @@ import { MoveItemDto } from './dto/moveitem.do';
 import { FileHierarchyResponseDto } from './dto/FileHierarchyResponse.dto';
 // import { BreadcrumbDto } from './dto/breadcrumb.dto';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
+import { SharePermission } from '@prisma/client';
 
 @Controller('file-hierarchy')
 @UseGuards(JwtAuthGuard)
@@ -194,6 +196,95 @@ export class FileHierarchyController {
     });
 
     return { success: true };
+  }
+
+
+  /** Шарим файл */
+  @Post(':id/share')
+  async shareFile(
+    @Param('id') id: string,
+    @Body('accountId') accountId: string,
+    @Body('permission') permission: SharePermission,
+    @Req() req: Request,
+  ) {
+    const userId = this.extractUserId(req);
+    return this.s3Service.shareFile(id, accountId, userId, permission);
+  }
+
+  @Get(':id/share')
+  async listShares(
+    @Param('id') hierarchyId: string,
+    @Req() req: Request,
+  ): Promise<{ accountId: string; permission: SharePermission }[]> {
+    const userId = this.extractUserId(req);
+
+    // Проверяем, что узел существует и текущий — его владелец
+    const item = await this.s3Service.prisma.fileHierarchy.findUnique({
+      where: { primarykey: hierarchyId },
+    });
+    if (!item || item.ownerId !== userId) {
+      throw new ForbiddenException('Нет доступа к этому файлу');
+    }
+
+    // Получаем все шаринги для этого узла
+    const shares = await this.s3Service.prisma.fileShare.findMany({
+      where: { fileHierarchyId: hierarchyId },
+      include: { account: { select: { firstName: true, lastName: true } } },
+    });
+
+    // Мапим в упрощенный формат
+    return shares.map(s => ({
+      accountId: s.accountId,
+      permission: s.permission,
+      name: `${s.account.firstName} ${s.account.lastName}`
+    }));
+  }
+
+  /** Убираем шаринг */
+  @Delete(':id/share/:accountId')
+  async unshareFile(
+    @Param('id') id: string,
+    @Param('accountId') accountId: string,
+    @Req() req: Request,
+  ) {
+    const userId = this.extractUserId(req);
+    return this.s3Service.unshareFile(id, accountId, userId);
+  }
+
+  /** Получить дерево включая шаренные */
+  @Get('tree-all')
+  async getAllAccessible(
+    @Query('parentId') parentId: string,
+    @Req() req: Request,
+  ): Promise<FileHierarchyResponseDto[]> {
+    const userId = this.extractUserId(req);
+    return this.s3Service.getAccessibleTree(userId, parentId);
+  }
+
+  @Get('shared-only')
+  async getSharedOnly(
+    @Req() req: Request,
+  ): Promise<FileHierarchyResponseDto[]> {
+    const userId = this.extractUserId(req);
+    const shares = await this.s3Service.prisma.fileShare.findMany({
+      where: { accountId: userId },
+      include: {
+        fileHierarchy: {
+          include: {
+            file: true,            // <— добавляем
+            children: {
+              include: {
+                file: true,        // <— и здесь
+                children: {
+                  include: { file: true } // если нужна вложенная
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+    return shares.map(s => this.s3Service.toResponseDto(s.fileHierarchy));
   }
 
   private extractUserId(req: Request): string {

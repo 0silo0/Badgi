@@ -1,6 +1,8 @@
 import apiClient from './client';
 import { FileHierarchyResponseDto } from '../types/fileHierarchy';
 
+type SharePermission = 'VIEW' | 'COMMENT' | 'EDIT';
+
 export const FileApi = {
   async getFileTree(parentId?: string): Promise<FileHierarchyResponseDto[]> {
     const response = await apiClient.get('/file-hierarchy/tree', {
@@ -63,19 +65,54 @@ export const FileApi = {
     await apiClient.delete(`/file-hierarchy/${id}`);
   },
 
-async downloadFile(id: string): Promise<{ url: string; name: string }> {
-  try {
-    const response = await apiClient.get(`/file-hierarchy/download/${id}`, {
-    validateStatus: (status) => status >= 200 && status < 400
-    });
-    console.log(response.data)
-    return response.data;
-  } catch (error) {
-    console.error('Ошибка скачивания:', error);
-    throw error; // Важно пробросить ошибку для обработки в компоненте
-  }
-},
+  async downloadFile(id: string): Promise<{ url: string; name: string }> {
+    try {
+      const response = await apiClient.get(`/file-hierarchy/download/${id}`, {
+      validateStatus: (status) => status >= 200 && status < 400
+      });
+      console.log(response.data)
+      return response.data;
+    } catch (error) {
+      console.error('Ошибка скачивания:', error);
+      throw error; // Важно пробросить ошибку для обработки в компоненте
+    }
+  },
 
+  async shareFile(
+    fileHierarchyId: string,
+    accountId: string,
+    permission: 'VIEW'|'COMMENT'|'EDIT' = 'VIEW'
+  ) {
+    const response = await apiClient.post(`/file-hierarchy/${fileHierarchyId}/share`, {
+      accountId, permission
+    });
+    return response.data;
+  },
+
+  /** Отзываем доступ */
+  async unshareFile(fileHierarchyId: string, accountId: string) {
+    await apiClient.delete(
+      `/file-hierarchy/${fileHierarchyId}/share/${accountId}`
+    );
+  },
+
+  /** Дерево со всеми доступными (свои + шаренные) */
+  async getFileShares(fileHierarchyId: string): Promise<{ id: string; permission: SharePermission; name: string; }[]> {
+    const response = await apiClient.get<{ accountId: string; permission: string; name: string }[]>(
+      `/file-hierarchy/${fileHierarchyId}/share`
+    );
+    // приводим к виду, который ожидает ShareModal
+    return response.data.map(s => ({
+      id: s.accountId,
+      permission: s.permission as SharePermission,
+      name: s.name,
+    }));
+  },
+
+  async getSharedFiles(): Promise<FileHierarchyResponseDto[]> {
+    const response = await apiClient.get('/file-hierarchy/shared-only');
+    return response.data.map((node: any) => this.mapFileNode(node));
+  },
 
   mapFileNode(node: any): FileHierarchyResponseDto {
     return {
@@ -84,6 +121,7 @@ async downloadFile(id: string): Promise<{ url: string; name: string }> {
       type: node.type.toLowerCase() as 'file' | 'folder',
       path: node.path,
       url: node.url,
+      //key: node.file?.s3key,
       size: node.size,
       mimeType: node.mimeType,
       createdAt: new Date(node.createdAt),

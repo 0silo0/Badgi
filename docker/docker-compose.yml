@@ -37,6 +37,26 @@ services:
         condition: service_healthy
     networks:
       - app-network
+
+  onlyoffice:
+    build:
+      context: ./docker
+      dockerfile: onlyoffice.Dockerfile
+    container_name: onlyoffice-docs
+    ports:
+      - "8082:80"
+    environment:
+      JWT_ENABLED: "true"
+      JWT_SECRET: "badgi-onlyoffice-super-secret"
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - app-network
   # frontend:
   #   container_name: frontend
   #   build:

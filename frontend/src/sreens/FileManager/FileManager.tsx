@@ -1,10 +1,11 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { FiFolder, FiFile, FiPlus, FiChevronRight, FiChevronDown, FiTrash2, FiEdit, FiUpload, FiDownload, FiEye } from 'react-icons/fi';
+import { FiFolder, FiFile, FiPlus, FiChevronRight, FiChevronDown, FiTrash2, FiEdit, FiUpload, FiDownload, FiEye, FiLoader } from 'react-icons/fi';
 import './FileManager.scss';
 import { FileHierarchyResponseDto } from '../../types/fileHierarchy';
 import { FileApi } from '../../api/fileHierarchy';
 import { EditorModal } from './EditorModal';
-
+import { OnlyofficeApi } from '../../api/onlyoffice';
+import { ShareModal } from '../../components/ShareModal';
 
 type DragItem = {
   id: string;
@@ -48,6 +49,7 @@ const FileManager = () => {
     isPlainText: boolean;
   } | null>(null);
   const [files, setFiles] = useState<FileHierarchyResponseDto[]>([]);
+  const [viewMode, setViewMode] = useState<'own' | 'shared'>('own');
   const [dragItem, setDragItem] = useState<DragItem | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{x: number; y: number; nodeId: string} | null>(null);
@@ -56,13 +58,34 @@ const FileManager = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(true);
   const [isRenaming, setIsRenaming] = useState(false);
+  const [loadingFileId, setLoadingFileId] = useState<string | null>(null);
+  const [shareModal, setShareModal] = useState<{ fileId: string } | null>(null);
+
+  // useEffect(() => {
+  //   const loadTree = async () => {
+  //     try {
+  //       const tree = await FileApi.getFileTree();
+  //       // Добавим свойство expanded для отображения
+  //       setFiles(tree);
+  //     } catch (error) {
+  //       console.error('Ошибка загрузки файлов:', error);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+  //   loadTree();
+  // }, []);
 
   useEffect(() => {
     const loadTree = async () => {
       try {
-        const tree = await FileApi.getFileTree();
-        // Добавим свойство expanded для отображения
-        setFiles(tree);
+        if (viewMode === 'own') {
+          const tree = await FileApi.getFileTree();
+          setFiles(tree);
+        } else {
+          const shared = await FileApi.getSharedFiles();
+          setFiles(shared);
+        }
       } catch (error) {
         console.error('Ошибка загрузки файлов:', error);
       } finally {
@@ -70,7 +93,7 @@ const FileManager = () => {
       }
     };
     loadTree();
-  }, []);
+  }, [viewMode]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, parentId: string) => {
     const files = e.target.files;
@@ -441,6 +464,23 @@ const FileManager = () => {
           
           <span className="name">{node.name}</span>
 
+          {/* {node.type === 'file' && node.mimeType?.includes('officedocument.wordprocessingml') && (
+            <div className="file-actions">
+              <button
+                className="edit-button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (node.url) {
+                    window.open(`/editor.html?fileKey=${encodeURIComponent(node.url)}`, '_blank')
+                  };
+                }}
+                title="Редактировать"
+              >
+                <FiEdit />
+              </button>
+            </div>
+          )} */}
+
           {node.type === 'file' && (
             <div className="file-actions">
               {isEditableFile(node) && (
@@ -448,17 +488,42 @@ const FileManager = () => {
                   className="edit-button"
                   onClick={async (e) => {
                     e.stopPropagation();
-                    const content = await fetchFileContent(node.id);
-                    setEditingFile({ 
-                      id: node.id, 
-                      content,
-                      isPlainText: node.mimeType?.toLowerCase() === 'text/plain'
-                    });
+                    setLoadingFileId(node.id);
+                    try {
+                      const content = await fetchFileContent(node.id);
+                      setEditingFile({
+                        id: node.id,
+                        content,
+                        isPlainText: node.mimeType?.toLowerCase() === 'text/plain'
+                      });
+                    } finally {
+                      setLoadingFileId(null);
+                    }
                   }}
                   title="Редактировать"
                 >
-                  <FiEdit />
+                  {loadingFileId === node.id
+                   ? <FiLoader className="spin" />
+                   : <FiEdit />
+                  }
                 </button>
+              )}
+
+              {node.mimeType?.includes('officedocument.wordprocessingml') && (
+                <div className="file-actions">
+                  <button
+                    className="edit-button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (node.url) {
+                        window.open(`/editor.html?fileKey=${encodeURIComponent(node.url)}&fileId=${node.id}`, '_blank')
+                      };
+                    }}
+                    title="Редактировать"
+                  >
+                    <FiEdit />
+                  </button>
+                </div>
               )}
 
               {/* Кнопка предпросмотра без изменений */}
@@ -537,17 +602,42 @@ const FileManager = () => {
         }}
       />
 
-      <div className="toolbar">
+      {/* <div className="toolbar">
         <button onClick={() => addNewItem('root', 'folder')}>
           <FiPlus /> Новая папка
         </button>
-        {/* <button onClick={() => addNewItem('root', 'file')}>
-          <FiPlus /> Новый файл
-        </button>
-        <button onClick={() => triggerFileInput('root')}>
-          <FiUpload /> Загрузить файлы
-        </button> */}
+      </div> */}
+
+      {/* ТУЛБАР С ТАБАМИ И КНОПКОЙ "Новая папка" */}
+      <div className="toolbar">
+        <div className="tabs">
+          <button
+            className={viewMode === 'own' ? 'active' : ''}
+            onClick={() => setViewMode('own')}
+          >
+            Мои файлы
+          </button>
+          <button
+            className={viewMode === 'shared' ? 'active' : ''}
+            onClick={() => setViewMode('shared')}
+          >
+            Расшаренные
+          </button>
+        </div>
+        {viewMode === 'own' && (
+          <button onClick={() => addNewItem('root', 'folder')}>
+            <FiPlus /> Новая папка
+          </button>
+        )}
       </div>
+
+      {shareModal && (
+        <ShareModal
+          fileId={shareModal.fileId}
+          visible={true}
+          onClose={() => setShareModal(null)}
+        />
+      )}
 
       {contextMenu && (
         <div 
@@ -573,6 +663,12 @@ const FileManager = () => {
             setContextMenu(null);
           }}>
             <FiEdit /> Переименовать
+          </button>
+          <button onClick={() => {
+            setShareModal({ fileId: contextMenu.nodeId });
+            setContextMenu(null);
+          }}>
+            <FiUpload /> Поделиться
           </button>
         </div>
       )}

@@ -17,6 +17,7 @@ import { ProjectsModule } from './projects/projects.module';
 import { CalendarModule } from './calendar/calendar.module';
 import { TasksModule } from './tasks/tasks.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { OnlyofficeModule } from './onlyoffice/onlyoffice.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     ProjectsModule,
     CalendarModule,
     TasksModule,
+    OnlyofficeModule,
   ],
   controllers: [AppController, FilesController],
   providers: [AppService],

@@ -58,6 +58,7 @@ model Account {
   File File[]
   FileHierarchy FileHierarchy[]
   Milestone Milestone[]
+  FileShare FileShare[]
 }
 
 model Role {
@@ -401,6 +402,7 @@ model FileHierarchy {
   @@index([s3Key])
   @@index([ownerId])
   @@map("file_hierarchy")
+  FileShare FileShare[]
 }
 
 enum FileType {
@@ -430,4 +432,25 @@ model Milestone {
   @@index([projectId], name: "idx_milestones_project")
   @@index([date],      name: "idx_milestones_date")
   Task Task[]
+}
+
+model FileShare {
+  id               String          @id @default(uuid()) @map("primarykey")
+  fileHierarchyId  String          @map("file_hierarchy_id")
+  fileHierarchy    FileHierarchy   @relation(fields: [fileHierarchyId], references: [primarykey])
+  accountId        String          @map("account_id")
+  account          Account         @relation(fields: [accountId], references: [primarykey])
+  permission       SharePermission @default(VIEW)      // Enum: VIEW, EDIT и т.п.
+  createdAt        DateTime        @default(now())      @map("created_at")
+
+  @@unique([fileHierarchyId, accountId], name: "uniq_file_share")
+  @@index([accountId], name: "idx_file_share_account")
+  @@index([fileHierarchyId], name: "idx_file_share_file")
+  @@map("file_shares")
+}
+
+enum SharePermission {
+  VIEW    // только просмотр
+  COMMENT // просмотр + комментирование
+  EDIT    // полный доступ
 }

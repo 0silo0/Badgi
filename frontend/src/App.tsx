@@ -26,6 +26,7 @@ import ProjectBoard from './sreens/Projects/ProjectBoard';
 import { Analytics } from './sreens/Projects/Analytics';
 import GanttPage from './sreens/Projects/GantPage';
 import Milestones from './sreens/Projects/Milestones';
+import { OnlyofficeEditor } from './sreens/FileManager/OnlyofficeEditor';
 
 const ProtectedLayout = () => {
   const { isAuthenticated } = useAuth();
@@ -65,6 +66,7 @@ const AppRoutes = () => {
             <Route path="milestones" element={<Milestones />} />
           </Route>
           <Route path="/files" element ={<FileManager />} />
+          <Route path="/onlyoffice-editor" element={<OnlyofficeEditor />} />
         </Route>
 
         <Route path="/register">

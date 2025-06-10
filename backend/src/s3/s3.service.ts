@@ -17,6 +17,7 @@ import { Readable } from 'stream';
 import { PrismaService } from '../prisma/prisma.service';
 import { FileHierarchyResponseDto } from './dto/FileHierarchyResponse.dto';
 import { CreateFolderDto } from './dto/createfolder.dto';
+import { SharePermission } from '@prisma/client';
 
 @Injectable()
 export class S3Service {
@@ -48,9 +49,10 @@ export class S3Service {
   }
 
   private generateUniqueFileName(originalName: string): string {
+    const separator = '---';
     const timestamp = Date.now();
     const randomString = Math.random().toString(36).substring(2, 8);
-    return `${timestamp}-${randomString}-${originalName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    return `${timestamp}-${randomString}-${originalName}`;
   }
 
   async generatePresignedUrl(key: string, expiresIn = 604800): Promise<string> {
@@ -68,6 +70,8 @@ export class S3Service {
 
     const uniqueFileName = this.generateUniqueFileName(file.originalname);
     const key = `badgi/${folder}/${uniqueFileName}`;
+
+    console.log('sdf  d  - ', uniqueFileName)
 
     await this.s3.send(
       new PutObjectCommand({
@@ -587,7 +591,74 @@ export class S3Service {
     return `badgi/${pathParts[badgiIndex + 1]}/${pathParts.slice(badgiIndex + 2).join('/')}`;
   }
 
-  private toResponseDto(item: any): FileHierarchyResponseDto {
+  async shareFile(
+    hierarchyId: string,
+    targetAccountId: string,
+    authUserId: string,
+    permission: SharePermission = SharePermission.VIEW,
+  ) {
+    // Проверяем, что сам файл существует и текущий юзер — владелец
+    const item = await this.prisma.fileHierarchy.findUnique({
+      where: { primarykey: hierarchyId },
+    });
+    if (!item) throw new NotFoundException('File not found');
+    if (item.ownerId !== authUserId) {
+      throw new ForbiddenException('Only owner can share');
+    }
+
+    // Создаём запись в file_shares
+    const share = await this.prisma.fileShare.create({
+      data: {
+        fileHierarchyId: hierarchyId,
+        accountId: targetAccountId,
+        permission,
+      },
+    });
+    return share;
+  }
+
+  async unshareFile(
+    hierarchyId: string,
+    targetAccountId: string,
+    authUserId: string,
+  ) {
+    // Проверяем владелец
+    const item = await this.prisma.fileHierarchy.findUnique({
+      where: { primarykey: hierarchyId },
+    });
+    if (!item) throw new NotFoundException('File not found');
+    if (item.ownerId !== authUserId) {
+      throw new ForbiddenException('Only owner can unshare');
+    }
+
+    console.log(hierarchyId, targetAccountId)
+
+    await this.prisma.fileShare.delete({
+      where: {
+        uniq_file_share: {
+          fileHierarchyId: hierarchyId,
+          accountId: targetAccountId,
+        },
+      },
+    });
+  }
+
+  async getAccessibleTree(userId: string, parentId?: string) {
+    // получаем все свои
+    const own = await this.getFileTree(userId, parentId);
+    // достаём записи шаринга
+    const shares = await this.prisma.fileShare.findMany({
+      where: { accountId: userId },
+      include: {
+        fileHierarchy: { include: { children: true } },
+      },
+    });
+    // вытаскиваем их FileHierarchyResponseDto
+    const shared = shares.map(s => this.toResponseDto(s.fileHierarchy));
+    return [...own, ...shared];
+  }
+
+  public toResponseDto(item: any): FileHierarchyResponseDto {
     return new FileHierarchyResponseDto({
       id: item.primarykey,
       name: item.name,
