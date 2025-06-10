@@ -78,8 +78,8 @@ export const UserSelector = ({
   const addUserToGroup = (user: User) => {
     if (!selectedUsers.some(u => u.id === user.id)) {
       setSelectedUsers([...selectedUsers, user]);
-      setSearchQuery(''); // Очищаем поиск
-      setUsers([]); // Очищаем результаты
+      setSearchQuery('');
+      setUsers([]);
     }
   };
 
@@ -93,7 +93,6 @@ export const UserSelector = ({
         title: groupName,
         memberIds: selectedUsers.map(u => u.id),
       });
-      console.log('asdfa sdf asdf sdaf fsd - ', res.data)
       onSelectChat(res.data.primarykey);
       if (onChatCreated) {
         onChatCreated();
@@ -167,14 +166,15 @@ export const UserSelector = ({
                       
                       {lastMessage && (
                         <div className="last-message">
-                          <p>{lastMessage.content}</p>
+                          <span className="last-message-content">
+                            {lastMessage.content}
+                          </span>
                         </div>
                       )}
                     </div>
                   </div>
                 );
               } else {
-                // Групповой чат
                 const lastMessage = chat.messages?.[chat.messages.length - 1];
                 
                 return (
@@ -218,20 +218,20 @@ export const UserSelector = ({
                         )}
                       </div>
                       
-                      <div className="chat-meta">
-                        <span className="members-count">{chat.members.length} участников</span>
-                        {lastMessage && (
-                          <span className="last-sender">
-                            {lastMessage.account === authUser?.id 
-                              ? 'Вы' 
-                              : `${lastMessage.accountRef?.firstName}`}
-                          </span>
-                        )}
+                      <div className="chat-members">
+                        {chat.members.length} участников
                       </div>
                       
                       {lastMessage && (
                         <div className="last-message">
-                          <p>{lastMessage.content}</p>
+                          <span className="last-sender">
+                            {lastMessage.account === authUser?.id 
+                              ? 'Вы' 
+                              : `${lastMessage.accountRef?.firstName}`}:
+                          </span>
+                          <span className="last-message-content">
+                            {lastMessage.content}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -244,93 +244,84 @@ export const UserSelector = ({
           )}
         </div>
       ) : (
-      <>
-        <div className="search-container">
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Введите логин, email или имя"
-          onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-        />
-        <button onClick={handleSearch} disabled={!searchQuery.trim() || loading}>
-          {loading ? 'Ищем...' : 'Найти'}
-        </button>
-      </div>
-
-      {activeTab === 'group' && (
-        <div className="create-group">
-          <input
-            type="text"
-            placeholder="Название группы"
-            value={groupName}
-            onChange={(e) => setGroupName(e.target.value)}
-          />
-          <div className="group-members">
-            {selectedUsers.map((user) => (
-              <div key={user.id} className="selected-user">
-                <div className="user-avatar">
-                  {user.avatarUrl ? (
-                    <img src={user.avatarUrl} alt={`${user.firstName} ${user.lastName}`} />
-                  ) : (
-                    <div className="avatar-placeholder">
-                      {user.firstName?.[0]}{user.lastName?.[0]}
-                    </div>
-                  )}
-                </div>
-                {user.firstName} {user.lastName}
-                <button onClick={() => removeUser(user.id)}>×</button>
-              </div>
-            ))}
+        <>
+          <div className="search-container">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Введите логин, email или имя"
+              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+            />
+            <button onClick={handleSearch} disabled={!searchQuery.trim() || loading}>
+              {loading ? 'Ищем...' : 'Найти'}
+            </button>
           </div>
-          <button
-            onClick={handleCreateGroup}
-            disabled={!groupName || selectedUsers.length === 0}
-          >
-            Создать группу
-          </button>
-        </div>
-      )}
 
-      <div className="users-list">
-        {users.length > 0 ? (
-          users.map(user => (
-              <div 
-                key={user.id} 
-                className="user-card" 
-                onClick={() => {
-                  if (activeTab === 'group') {
-                    // Добавляем в группу
-                    addUserToGroup(user);
-                  } else {
-                    // Открываем личный чат
-                    onSelect(user.id);
-                  }
-                }}
-              >
-              <div className="user-avatar">
-                {user.avatarUrl ? (
-                  <img src={user.avatarUrl} alt={`${user.firstName} ${user.lastName}`} />
-                ) : (
-                  <div className="avatar-placeholder">
-                    {user.firstName?.[0]}{user.lastName?.[0]}
+          {activeTab === 'group' && (
+            <div className="create-group">
+              <h3 className="create-group-title">Создать новую группу</h3>
+              <input
+                type="text"
+                placeholder="Название группы"
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+              />
+              <div className="group-members">
+                {selectedUsers.map((user) => (
+                  <div key={user.id} className="selected-user">
+                    <span>
+                      {user.firstName} {user.lastName}
+                    </span>
+                    <button onClick={() => removeUser(user.id)}>×</button>
                   </div>
-                )}
+                ))}
               </div>
-              <div className="user-info">
-                <div className="user-login">@{user.login}</div>
-                <div className="user-name">{user.firstName} {user.lastName}</div>
-                {/* {activeTab === 'group' && (
-                  <div className="user-add-hint">Добавить в группу</div>
-                )} */}
-              </div>
+              <button
+                onClick={handleCreateGroup}
+                disabled={!groupName || selectedUsers.length === 0}
+              >
+                Создать группу
+              </button>
             </div>
-          ))
-        ) : (
-          !loading && <div className="no-results">Ничего не найдено</div>
-        )}
-      </div>
-      </>
+          )}
+
+          <div className="users-list">
+            {users.length > 0 ? (
+              users.map(user => (
+                <div 
+                  key={user.id} 
+                  className="user-card" 
+                  onClick={() => {
+                    if (activeTab === 'group') {
+                      addUserToGroup(user);
+                    } else {
+                      onSelect(user.id);
+                    }
+                  }}
+                >
+                  <div className="user-avatar">
+                    {user.avatarUrl ? (
+                      <img src={user.avatarUrl} alt={`${user.firstName} ${user.lastName}`} />
+                    ) : (
+                      <div className="avatar-placeholder">
+                        {user.firstName?.[0]}{user.lastName?.[0]}
+                      </div>
+                    )}
+                  </div>
+                  <div className="user-info">
+                    <div className="user-name">
+                      {user.firstName} {user.lastName}
+                    </div>
+                    <div className="user-login">@{user.login}</div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              !loading && <div className="no-results">Ничего не найдено</div>
+            )}
+          </div>
+        </>
       )}
     </div>
   );

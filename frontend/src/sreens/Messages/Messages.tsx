@@ -13,14 +13,11 @@ const formatMessageDate = (date: Date): string => {
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
 
-  // console.log('b = ',today, yesterday)
-  
   const messageDate = new Date(date);
   messageDate.setHours(0, 0, 0, 0);
   today.setHours(0, 0, 0, 0);
   yesterday.setHours(0, 0, 0, 0);
 
-  // console.log('a = ', messageDate.getTime(), yesterday.getTime())
   if (messageDate.getTime() === today.getTime()) {
     return 'Сегодня';
   } else if (messageDate.getTime() === yesterday.getTime()) {
@@ -34,7 +31,6 @@ const formatMessageDate = (date: Date): string => {
   }
 };
 
-// Функция для группировки сообщений по дням
 const groupMessagesByDate = (messages: Message[]) => {
   const grouped: Record<string, Message[]> = {};
 
@@ -199,19 +195,6 @@ export const Messages = () => {
     }
   };
   
-  // const handleSelectChat = (chatId: string) => {
-  //   setCurrentChat(chatId);
-  //   const recipient = userChats.find((i) => i.primarykey === chatId)?.members.find((i) => i.accountRef.id !== authUser?.id);
-  //   setCurrentRecipient({
-  //     id: recipient?.accountRef.id || '',
-  //     login: recipient?.accountRef.login,
-  //     firstName: recipient?.accountRef.firstName || '',
-  //     lastName: recipient?.accountRef.lastName || '',
-  //     avatarUrl: recipient?.accountRef.avatarUrl,
-  //     email: recipient?.accountRef.email
-  //   })
-  // };
-
   const handleSelectChat = (chatId: string) => {
     const chat = userChats.find(c => c.primarykey === chatId);
     setCurrentChat(chatId);
@@ -227,7 +210,7 @@ export const Messages = () => {
         email: recipient?.accountRef.email
       })
     } else {
-      setCurrentRecipient(null); // Для группового чата
+      setCurrentRecipient(null);
     }
   };
 
@@ -294,9 +277,7 @@ export const Messages = () => {
   const handleRemoveMember = async (memberId: string) => {
     try {
       await apiClient.delete(`/chat/group/${currentChat}/members/${memberId}`);
-      // Обновляем список чатов
       await loadUserChats();
-      // Обновляем текущий чат
       const updatedChats = await apiClient.get('/chat/my');
       setUserChats(updatedChats.data);
     } catch (error) {
@@ -312,10 +293,8 @@ export const Messages = () => {
 
     try {
       await apiClient.delete(`/chat/group/${currentChat}`);
-      // Возвращаемся к списку чатов
       setCurrentChat(null);
       setCurrentRecipient(null);
-      // Обновляем список чатов
       await loadUserChats();
     } catch (error) {
       console.error('Failed to delete chat:', error);
@@ -326,72 +305,43 @@ export const Messages = () => {
   return (
     <div className="chat-container">
       <div className="chat-header">
-      <button 
-        onClick={handleBackClick}
-        className="back-button"
-        title="Вернуться к списку чатов"
-      >
-        <FaArrowLeft />
-      </button>
+        <button 
+          onClick={handleBackClick}
+          className="back-button"
+          title="Вернуться к списку чатов"
+        >
+          <FaArrowLeft />
+        </button>
 
-    {currentRecipient ? (
-      <div className="recipient-info">
-        {currentRecipient?.avatarUrl ? (
-            <img
-              src={currentRecipient?.avatarUrl || '/default-avatar.png'}
-              alt={currentRecipient?.firstName}
-              className="recipient-avatar"
-            />
-          ) : (
-            <div className="avatar-placeholder">
-              {currentRecipient?.firstName[0]} {currentRecipient?.lastName[0]}
-            </div>
-          )}
-        <div className="recipient-name">
-          {currentRecipient?.firstName} {currentRecipient?.lastName}
-        </div>
-      </div>
-      ) : (
-        // Шапка для группового чата
-        <GroupChatInfo 
-          chat={userChats.find(c => c.primarykey === currentChat)!} 
-          onRemoveMember={handleRemoveMember}
-          onDeleteChat={handleDeleteChat}
-        />
-      )}
-      <span className={`connection-status ${isConnected ? 'connected' : 'disconnected'}`}>
-        {isConnected ? 'Online' : 'Offline'}
-      </span>
-    </div>
-      
-      {/* <div className="messages-list">
-        {messages
-          .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-          .map((msg) => (
-            <div
-              key={msg.id}
-              className={`message ${msg.account.id === authUser?.id ? 'my-message' : 'other-message'}`}>
-              {msg.account.id !== authUser?.id && (
-                <img
-                  src={msg.account.avatarUrl || '/default-avatar.png'} 
-                  alt={msg.account.firstName}
-                  className="message-avatar"
-                />
-              )}
-              <div className="message-content-wrapper">
-                {msg.account.id !== authUser?.id && (
-                  <div className="message-author">{msg.account.firstName}</div>
-                )}
-                <div className="message-content">{msg.content}</div>
-                <div className="message-time">
-                  {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </div>
+        {currentRecipient ? (
+          <div className="recipient-info">
+            {currentRecipient?.avatarUrl ? (
+              <img
+                src={currentRecipient?.avatarUrl || '/default-avatar.png'}
+                alt={currentRecipient?.firstName}
+                className="recipient-avatar"
+              />
+            ) : (
+              <div className="recipient-avatar avatar-placeholder">
+                {currentRecipient?.firstName[0]}{currentRecipient?.lastName[0]}
               </div>
+            )}
+            <div className="recipient-name">
+              {currentRecipient?.firstName} {currentRecipient?.lastName}
             </div>
-          ))}
-          <div ref={messagesEndRef} />
-      </div> */}
-
+          </div>
+        ) : (
+          <GroupChatInfo 
+            chat={userChats.find(c => c.primarykey === currentChat)!} 
+            onRemoveMember={handleRemoveMember}
+            onDeleteChat={handleDeleteChat}
+          />
+        )}
+        <span className={`connection-status ${isConnected ? 'connected' : 'disconnected'}`}>
+          {isConnected ? 'Online' : 'Offline'}
+        </span>
+      </div>
+      
       <div className="messages-list">
         {Object.entries(groupedMessages).map(([dateKey, dayMessages]) => (
           <div key={dateKey} className="message-day-group">
@@ -400,26 +350,29 @@ export const Messages = () => {
             </div>
             
             {dayMessages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`message ${msg.account.id === authUser?.id ? 'my-message' : 'other-message'}`}>
-              {msg.account.id && msg.account.id !== authUser?.id && (
-                <img
-                  src={msg.account.avatarUrl || '/default-avatar.png'} 
-                  alt={msg.account.firstName}
-                  className="message-avatar"
-                />
-              )}
-              <div className="message-content-wrapper">
+              <div
+                key={msg.id}
+                className={`message ${msg.account.id === authUser?.id ? 'my-message' : 'other-message'}`}
+              >
                 {msg.account.id && msg.account.id !== authUser?.id && (
-                  <div className="message-author">{msg.account.firstName}</div>
+                  <img
+                    src={msg.account.avatarUrl || '/default-avatar.png'} 
+                    alt={msg.account.firstName}
+                    className="message-avatar"
+                  />
                 )}
-                <div className="message-content">{msg.content}</div>
-                <div className="message-time">
-                  {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                <div className="message-content-wrapper">
+                  {msg.account.id && msg.account.id !== authUser?.id && (
+                    <div className="message-author">{msg.account.firstName}</div>
+                  )}
+                  <div className="message-content">{msg.content}</div>
+                  <div className="message-time">
+                    <span className="message-time-right">
+                      {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
             ))}
           </div>
         ))}
@@ -436,7 +389,6 @@ export const Messages = () => {
         <button 
           onClick={handleSend} 
           disabled={!message.trim() || !isConnected}
-          className={!message.trim() || !isConnected ? 'disabled' : ''}
         >
           {isConnected ? 'Отправить' : 'Подключение...'}
         </button>
