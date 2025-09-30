@@ -57,7 +57,7 @@ const UserSearchInput: React.FC<UserSearchInputProps> = ({
       {showInput && (
         <input
           type="text"
-          placeholder="Начните вводить имя или логин..."
+          placeholder="Начните вводить логин..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           onFocus={() => searchQuery.length > 2 && setIsDropdownOpen(true)}

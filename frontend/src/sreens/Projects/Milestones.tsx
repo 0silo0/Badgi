@@ -253,7 +253,7 @@ export default function Milestones() {
                 </div>
               )}
             </TabPane>
-            <TabPane tab="Комментарии" key="3">Пока нет комментариев</TabPane>
+            {/* <TabPane tab="Комментарии" key="3">Пока нет комментариев</TabPane> */}
           </Tabs>
         )}
       </Modal>

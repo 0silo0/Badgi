@@ -43,7 +43,7 @@ const columns: Column[] = [
     template: task => (task as ExtendedTask).assignee ?? '—'
   },
   {
-    id: 'dates', header: 'Даты', width: 180,
+    id: 'dates', header: 'Дата', width: 180,
     template: task => {
       const t = task as ExtendedTask;
       
@@ -53,7 +53,7 @@ const columns: Column[] = [
       
       const start = dayjs(t.start).format('YYYY-MM-DD');
       const end = t.end ? dayjs(t.end).format('YYYY-MM-DD') : '—';
-      return `${start} – ${end}`;
+      return `${start}`;
     }
   },
   {

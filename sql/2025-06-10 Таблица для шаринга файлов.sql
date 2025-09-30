@@ -9,11 +9,11 @@ END$$;
 
 -- 2) Создаём таблицу file_shares
 CREATE TABLE IF NOT EXISTS file_shares (
-  primarykey                 UUID               PRIMARY KEY DEFAULT uuid_generate_v4(),
-  file_hierarchy_id  UUID               NOT NULL,
-  account_id         UUID               NOT NULL,
-  permission         share_permission   NOT NULL DEFAULT 'VIEW',
-  created_at         TIMESTAMPTZ        NOT NULL DEFAULT NOW(),
+    primarykey UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    file_hierarchy_id UUID NOT NULL REFERENCES file_hierarchy(primarykey) ON DELETE CASCADE,
+    account_id UUID NOT NULL REFERENCES accounts(primarykey) ON DELETE CASCADE,
+    permission VARCHAR(50) NOT NULL DEFAULT 'VIEW',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
   -- Уникальное ограничение: один и тот же файл одному юзеру не дублируется
   CONSTRAINT uniq_file_share UNIQUE (file_hierarchy_id, account_id),

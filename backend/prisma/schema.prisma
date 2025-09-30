@@ -343,7 +343,7 @@ model Calendar {
   primarykey    String    @id @default(uuid())
   title         String
   start   DateTime?  @default(now())
-  end     DateTime?
+  end     DateTime? @map("enddate")
   type    String
   color   String
   description String?

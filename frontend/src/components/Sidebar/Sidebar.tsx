@@ -31,8 +31,8 @@ export default function Sidebar() {
   const navItems = [
     { path: '/', icon: <FiHome /> },
     { path: '/profile', icon: <FiUser /> },
-    { path: '/settings', icon: <FiSettings /> },
-    { path: '/notifications', icon: <FiBell /> },
+    // { path: '/settings', icon: <FiSettings /> },
+    // { path: '/notifications', icon: <FiBell /> },
     { path: '/task', icon: <FiFileText /> },
     { path: '/calendar', icon: <FiCalendar /> },
     { path: '/messages', icon: <FiMessageSquare /> },

@@ -18,7 +18,7 @@ export default function Header() {
 
   return (
     <header className="header">
-      <button 
+      {/* <button 
         className="nav-item" 
         onClick={handleAction('Уведомления')}
       >
@@ -64,7 +64,7 @@ export default function Header() {
       >
         <FiHelpCircle className="icon" />
         <span className="label">Поддержка</span>
-      </button>
+      </button> */}
       
       <div className="avatar">
         {authUser?.avatarUrl ? (

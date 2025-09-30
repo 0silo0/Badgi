@@ -1,4 +1,3 @@
-
 CREATE TABLE calendar (
     primarykey UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title VARCHAR NOT NULL,
