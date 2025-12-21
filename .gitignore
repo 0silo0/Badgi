@@ -3,3 +3,7 @@ node_modules/
 documentation/ВКР_Вершинин.docx
 
 backend/.env
+
+backend/yarn.lock
+
+frontend/package-lock.json
