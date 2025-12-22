@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaTimes, FaEye, FaEyeSlash } from 'react-icons/fa';
+import { FaEye, FaEyeSlash, FaArrowLeft } from 'react-icons/fa';
 import './newPassword.scss';
 
 export default function NewPassword() {
@@ -33,12 +33,11 @@ export default function NewPassword() {
   };
 
   return (
-    <div className="password-container">
-      <button className="close-btn" onClick={() => navigate('/login')}>
-        <FaTimes />
-      </button>
-      
+    <div className="password-container">      
       <div className="auth-container">
+        <button className="close-btn" onClick={() => navigate('/login')}>
+          <FaArrowLeft />
+        </button>
         <div className="form-section">
           <h2>Создание пароля</h2>
           <p className="step-info">Шаг 2 из 4</p>

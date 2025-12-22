@@ -84,13 +84,123 @@
       .remember-me {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
-        margin: 1rem 0 2rem;
-        color: #2c3e50;
-        justify-content: flex-start;
-
-        input {
+        justify-content: center;
+        gap: 0.75rem;
+        margin: 1.5rem 0 2rem;
+        padding: 0.75rem 1.25rem;
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        border-radius: 50px;
+        border: 1px solid #e2e8f0;
+        transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        cursor: pointer;
+        user-select: none;
+        box-shadow: 
+          0 4px 6px -1px rgba(0, 0, 0, 0.05),
+          0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        position: relative;
+        overflow: hidden;
+        
+        /* Светящийся эффект при hover */
+        &::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%);
+          border-radius: 50px;
+          opacity: 0;
+          transition: opacity 0.3s ease;
+          z-index: 0;
+        }
+        
+        &:hover {
+          border-color: #3b82f6;
+          box-shadow: 
+            0 10px 15px -3px rgba(59, 130, 246, 0.1),
+            0 4px 6px -2px rgba(59, 130, 246, 0.05);
+          transform: translateY(-2px);
+          
+          &::before {
+            opacity: 1;
+          }
+        }
+        
+        /* Кастомный анимированный чекбокс */
+        input[type="checkbox"] {
+          appearance: none;
+          -webkit-appearance: none;
+          width: 22px;
+          height: 22px;
+          border: 2px solid #cbd5e1;
+          border-radius: 8px;
           margin: 0;
+          cursor: pointer;
+          position: relative;
+          transition: all 0.3s ease;
+          z-index: 1;
+          background: white;
+          
+          &:checked {
+            background-color: #3b82f6;
+            border-color: #3b82f6;
+            animation: checkmark 0.4s ease;
+            
+            &::before {
+              content: '✓';
+              position: absolute;
+              color: white;
+              font-size: 14px;
+              font-weight: bold;
+              left: 50%;
+              top: 50%;
+              transform: translate(-50%, -50%);
+            }
+          }
+          
+          &:hover {
+            border-color: #94a3b8;
+            transform: scale(1.1);
+          }
+          
+          &:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+          }
+        }
+        
+        /* Текст с градиентом */
+        span {
+          color: #475569;
+          font-weight: 600;
+          font-size: 0.95rem;
+          letter-spacing: 0.02em;
+          transition: all 0.3s ease;
+          position: relative;
+          z-index: 1;
+          background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+        
+        &:hover span {
+          background: linear-gradient(90deg, #2563eb, #7c3aed);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+      }
+
+      @keyframes checkmark {
+        0% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.2);
+        }
+        100% {
+          transform: scale(1);
         }
       }
 
@@ -116,8 +226,7 @@
         font-size: 0.9rem;
 
         &:hover {
-          color: #2d3436;
-          text-decoration: underline;
+          color: #4bc7e9;
         }
       }
 
@@ -143,12 +252,7 @@
 
     .graphic-section {
       flex: 1;
-      background: linear-gradient(
-        155deg,
-        rgba(59, 63, 65, 0.8),
-        rgba(45, 52, 54, 0.9),
-        rgba(0, 0, 0, 0.7)
-      );
+      background: linear-gradient(135deg, #3b82f6 0%, #9582c4 100%);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -168,7 +272,7 @@
         height: 200%;
         background: radial-gradient(
           circle,
-          rgba(255, 255, 255, 0.15) 0%,
+          rgba(114, 247, 247, 0.808) 0%,
           transparent 60%
         );
         animation: softGlow 25s ease-in-out infinite;
@@ -213,7 +317,6 @@
   font-size: 0.9rem;
   
   &:hover {
-    color: #2d3436;
-    text-decoration: underline;
+    color: #4bc7e9;
   }
 }

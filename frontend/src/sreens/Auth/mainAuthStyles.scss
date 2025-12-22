@@ -1,0 +1,61 @@
+.close-btn {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: white;
+  border: 2px solid #e2e8f0;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 1000;
+  transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  overflow: hidden;
+  
+  // Подложка с градиентом
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, #3b82f6 0%, #cfbaff 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: -1;
+  }
+  
+  svg {
+    width: 18px !important;
+    height: 18px !important;
+    color: #64748b !important;
+    fill: #64748b !important;
+    flex-shrink: 0;
+    transition: all 0.3s ease ;
+  }
+  
+  &:hover {
+    border-color: transparent;
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 12px 24px rgba(59, 130, 246, 0.2);
+    
+    &::before {
+      opacity: 1;
+    }
+    
+    svg {
+      color: white !important;
+      fill: white !important;
+      transform: translateX(-6px) rotate(-10deg) !important;
+    }
+  }
+  
+  &:active {
+    transform: translateY(-1px) scale(0.98);
+  }
+}

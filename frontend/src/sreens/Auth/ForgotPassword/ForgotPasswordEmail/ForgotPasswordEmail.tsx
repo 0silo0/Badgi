@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaTimes } from 'react-icons/fa';
+import { FaArrowLeft } from 'react-icons/fa';
 import apiClient from '../../../../api/client';
 import { isAxiosError } from 'axios';
 import './ForgotPasswordEmail.scss';
@@ -36,11 +36,10 @@ export default function ForgotPasswordEmail() {
 
   return (
     <div className="email-container">
-      <button className="close-btn" onClick={() => navigate('/login')}>
-        <FaTimes />
-      </button>
-      
       <div className="auth-container">
+        <button className="close-btn" onClick={() => navigate('/login')}>
+          <FaArrowLeft />
+        </button>
         <div className="form-section">
           <h2>Восстановление пароля</h2>
           <p className="step-info">Введите email вашего аккаунта</p>

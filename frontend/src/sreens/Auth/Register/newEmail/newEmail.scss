@@ -1,3 +1,5 @@
+@import '../../mainAuthStyles.scss';
+
 .email-container {
     display: flex;
     justify-content: center;
@@ -7,38 +9,6 @@
     padding: 2rem;
     position: relative;
   
-    .close-btn {
-      position: absolute;
-      top: 273px;
-      left: calc(50% - 470px + 20px);
-      background: rgba(255, 255, 255, 0.9);
-      border: none;
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      cursor: pointer;
-      z-index: 10;
-      transition: background 0.3s ease;
-  
-      &:hover {
-        background: rgba(255, 255, 255, 1);
-        
-        svg {
-          color: #ff4757;
-        }
-      }
-  
-      svg {
-        color: #2c3e50;
-        font-size: 1.2rem;
-        transition: color 0.3s ease;
-      }
-    }
-  
     .auth-container {
       display: flex;
       width: 800px;
@@ -47,6 +17,10 @@
       box-shadow: 0 8px 32px rgba(84, 84, 88, 0.37);
       overflow: hidden;
       position: relative;
+
+      .close-btn {
+
+      }
   
       .graphic-section {
         flex: 1;

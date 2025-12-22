@@ -74,11 +74,10 @@ export default function ForgotPasswordConfirm() {
 
   return (
     <div className="confirm-container">
-      <button className="back-btn" onClick={() => navigate(-1)}>
-        <FaArrowLeft />
-      </button>
-
       <div className="glass-panel">
+        <button className="close-btn" onClick={() => navigate(-1)}>
+          <FaArrowLeft />
+        </button>
         <h2>Подтверждение кода</h2>
         <p className="step-info">
           Введите код из письма, отправленного на {email}
