@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaTimes } from 'react-icons/fa';
+import { FaArrowLeft } from 'react-icons/fa';
 import apiClient from '../../../../api/client';
 import { isAxiosError } from 'axios';
 import './newEmail.scss';
@@ -50,14 +50,13 @@ export default function NewEmail() {
   };
 
   return (
-    <div className="email-container">
-      <button className="close-btn" onClick={() => navigate('/login')}>
-        <FaTimes />
-      </button>
-      
+    <div className="email-container">      
       <div className="auth-container">
+        <button className="close-btn" onClick={() => navigate('/login')}>
+          <FaArrowLeft />
+        </button>
         <div className="form-section">
-          <h2>Подтверждение email</h2>
+          <h2>Укажите свой email</h2>
           <p className="step-info">Шаг 3 из 4</p>
 
           <div className={`error-message ${error ? 'visible' : ''}`}>

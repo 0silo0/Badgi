@@ -87,11 +87,10 @@ export default function NewEmailConfirm() {
 
   return (
     <div className="confirm-container">
-      <button className="back-btn" onClick={() => navigate(-1)}>
-        <FaArrowLeft />
-      </button>
-
       <div className="glass-panel">
+        <button className="close-btn" onClick={() => navigate(-1)}>
+          <FaArrowLeft />
+        </button>
         <h2>Подтверждение email</h2>
         <p className="step-info">Шаг 4 из 4</p>
 

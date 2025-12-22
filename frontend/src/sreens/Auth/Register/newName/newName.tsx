@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaTimes } from 'react-icons/fa';
+import { FaArrowLeft  } from 'react-icons/fa';
 import './newName.scss';
 
 export default function NewName() {
@@ -27,11 +27,10 @@ export default function NewName() {
 
   return (
     <div className="name-container">
-      <button className="close-btn" onClick={() => navigate('/login')}>
-        <FaTimes />
-      </button>
-      
       <div className="auth-container">
+        <button className="close-btn" onClick={() => navigate('/login')}>
+          <FaArrowLeft />
+        </button>
         <div className="form-section">
           <h2>Регистрация</h2>
           <p className="step-info">Шаг 1 из 4</p>
