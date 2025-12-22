@@ -1,0 +1,17 @@
+# microservices/docker-compose.yml
+version: '3.8'
+services:
+  gateway:
+    build: 
+      context: ../
+      dockerfile: microservices/gateway/Dockerfile
+    ports:
+      - "4132:4132"
+    depends_on:
+      - auth-service
+  
+  auth-service:
+    build:
+      context: ../
+      dockerfile: microservices/services/auth-service/Dockerfile
+    # ...
