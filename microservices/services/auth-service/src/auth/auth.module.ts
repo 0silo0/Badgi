@@ -2,12 +2,12 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
-import { PrismaService } from '../prisma/prisma.service';
 import { RedisModule } from '../redis/redis.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { TokenService } from './token.service';
 import { EventsModule } from '../events/events.module';
+import { PrismaModule } from 'src/prisma/prisma.module';
 
 @Module({
   imports: [
@@ -24,8 +24,9 @@ import { EventsModule } from '../events/events.module';
     }),
     RedisModule,
     EventsModule,
+    PrismaModule
   ],
-  providers: [AuthService, PrismaService, JwtAuthGuard, TokenService],
+  providers: [AuthService, JwtAuthGuard, TokenService],
   controllers: [AuthController],
   exports: [TokenService, JwtModule],
 })

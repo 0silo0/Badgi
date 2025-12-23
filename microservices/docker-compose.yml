@@ -1,17 +1,180 @@
-# microservices/docker-compose.yml
 version: '3.8'
+
 services:
-  gateway:
-    build: 
-      context: ../
-      dockerfile: microservices/gateway/Dockerfile
+  # ==================== DATABASES ====================
+  postgres-main:
+    image: postgres:15-alpine
+    container_name: badgi-postgres-main
+    environment:
+      POSTGRES_DB: badgi_main
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Qwerty123!
     ports:
-      - "4132:4132"
+      - "5432:5432"
+    volumes:
+      - postgres_main_data:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - badgi-network
+    restart: unless-stopped
+
+  postgres-mail:
+    image: postgres:15-alpine
+    container_name: badgi-postgres-mail
+    environment:
+      POSTGRES_DB: mail_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Qwerty123!
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_mail_data:/var/lib/postgresql/data
+    networks:
+      - badgi-network
+    restart: unless-stopped
+
+  # ==================== CACHE & MESSAGE QUEUE ====================
+  redis:
+    image: redis:7-alpine
+    container_name: badgi-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass RedisPass123
+    volumes:
+      - redis_data:/data
+    networks:
+      - badgi-network
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: badgi-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"   # AMQP
+      - "15672:15672" # Management UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - badgi-network
+    restart: unless-stopped
+
+  # ==================== API GATEWAY ====================
+  gateway:
+    build: ./gateway
+    container_name: badgi-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - GATEWAY_PORT=3000
+      - AUTH_SERVICE_URL=http://auth-service:3002
+      - MAIL_SERVICE_URL=http://mail-service:3003
     depends_on:
       - auth-service
-  
+      - mail-service
+    networks:
+      - badgi-network
+    restart: unless-stopped
+
+  # ==================== MICROSERVICES ====================
   auth-service:
-    build:
-      context: ../
-      dockerfile: microservices/services/auth-service/Dockerfile
-    # ...
+    build: ./services/auth-service
+    container_name: badgi-auth-service
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=development
+      - AUTH_SERVICE_PORT=3002
+      - DATABASE_URL=postgresql://postgres:Qwerty123!@postgres-main:5432/badgi_main?schema=auth_service
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=RedisPass123
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - JWT_REFRESH_SECRET=your-refresh-secret-key-change-in-production
+    depends_on:
+      - postgres-main
+      - redis
+      - rabbitmq
+    networks:
+      - badgi-network
+    restart: unless-stopped
+    volumes:
+      - ./services/auth-service:/usr/src/app
+      - /usr/src/app/node_modules
+
+  mail-service:
+    build: ./services/mail-service
+    container_name: badgi-mail-service
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=development
+      - MAIL_SERVICE_PORT=3003
+      - DATABASE_URL=postgresql://postgres:Qwerty123!@postgres-mail:5432/mail_db
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+      - SMTP_HOST=smtp.mailtrap.io
+      - SMTP_PORT=2525
+      - SMTP_USER=${SMTP_USER:-test}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-test}
+      - EMAIL_FROM=noreply@goal-path.ru
+    depends_on:
+      - postgres-mail
+      - rabbitmq
+    networks:
+      - badgi-network
+    restart: unless-stopped
+    volumes:
+      - ./services/mail-service:/usr/src/app
+      - /usr/src/app/node_modules
+
+  # ==================== MONITORING ====================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: badgi-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - badgi-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: badgi-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/datasources:/etc/grafana/provisioning/datasources
+    networks:
+      - badgi-network
+    depends_on:
+      - prometheus
+
+volumes:
+  postgres_main_data:
+  postgres_mail_data:
+  redis_data:
+  rabbitmq_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  badgi-network:
+    driver: bridge

@@ -1,0 +1,9 @@
+node_modules/
+
+documentation/ВКР_Вершинин.docx
+
+.env
+
+package-lock.json
+
+/dist

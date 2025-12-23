@@ -92,6 +92,7 @@ export class AuthController {
   @Post('register')
   @HttpCode(201)
   async register(@Body() registerDto: RegisterDto) {
+    console.log("sfsfsdfsdfsfsd")
     return this.authService.register(registerDto);
   }
 
