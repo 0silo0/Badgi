@@ -29,6 +29,10 @@ export default function NewPassword() {
       setError('Пароли не совпадают');
       return;
     }
+    if (confirmPassword.length < 7) {
+      setError('Пароль должен быть не менее 8 знаков');
+      return;
+    }
     navigate('../email');
   };
 
