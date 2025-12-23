@@ -20,7 +20,7 @@ model EmailLog {
   // Данные письма
   template    String                       // Шаблон (welcome, reset-password и т.д.)
   subject     String
-  status      EmailStatus @default(PENDING)
+  status      String   @default("PENDING")
   error       String?                       // Ошибка, если FAILED
   
   // Поля для аналитики
@@ -36,13 +36,4 @@ model EmailLog {
   @@index([userEmail])
   @@index([status])
   @@index([createdAt])
-}
-
-enum EmailStatus {
-  PENDING
-  SENT
-  FAILED
-  DELIVERED
-  OPENED
-  CLICKED
 }

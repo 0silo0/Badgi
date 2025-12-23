@@ -21,7 +21,7 @@ import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { Request } from 'express';
 import { JwtService } from '@nestjs/jwt';
 
-@Controller('auth')
+@Controller()
 export class AuthController {
   private userId: string;
   constructor(

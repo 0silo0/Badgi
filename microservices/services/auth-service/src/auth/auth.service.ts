@@ -94,7 +94,7 @@ export class AuthService {
     return true;
   }
 
-  async resetPassword(dto: ResetPassword) {
+  async resetPassword(dto: ResetPassword) {    
     const hashedPassword = dto.password
       ? await bcrypt.hash(dto.password, 10)
       : undefined;
@@ -104,6 +104,19 @@ export class AuthService {
       data: {
         password: hashedPassword,
         editAt: new Date(),
+      },
+    });
+
+    const existingUser = await this.prisma.account.findUnique({
+      where: { email: dto.email },
+    });
+
+    await this.eventPublisher.sendEmailEvent({
+      type: 'PASSWORD_CHANGED_SUCCESSFULLY',
+      email: dto.email,
+      userId: existingUser?.primarykey,
+      data: {
+        message: 'Ваш пароль был успешно изменен'
       },
     });
 
@@ -185,6 +198,17 @@ export class AuthService {
   }
 
   async register(dto: RegisterDto) {
+    if (dto.code) {
+      const isValid = await this.verifyConfirmationCode({
+        email: dto.email,
+        code: dto.code
+      });
+      
+      if (!isValid) {
+        throw new UnauthorizedException('Неверный или просроченный код подтверждения');
+      }
+    }
+
     const existingUser = await this.prisma.account.findFirst({
       where: {
         OR: [{ email: dto.email }, { login: dto.login }],
@@ -214,7 +238,7 @@ export class AuthService {
         lastName: dto.lastName,
         isEmailVerified: true,
         roleRef: { connect: { primarykey: role.primarykey } },
-        status: ProfileStatus.PENDING,
+        status: ProfileStatus.ACTIVE,
       },
     });
 

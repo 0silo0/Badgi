@@ -45,7 +45,7 @@ async function bootstrap() {
   }));
 
   // Глобальный префикс
-  app.setGlobalPrefix('api');
+  app.setGlobalPrefix('api/auth');
 
   // Prisma shutdown hooks
   const prismaService = app.get(PrismaService);

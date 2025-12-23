@@ -3,7 +3,7 @@ import { RabbitMQService } from '../rabbitmq/rabbitmq.service';
 import { MailService } from './mail.service';
 
 interface SendEmailEvent {
-  type: 'WELCOME' | 'CONFIRMATION_CODE' | 'PASSWORD_RESET' | 'CUSTOM';
+  type: 'WELCOME' | 'CONFIRMATION_CODE' | 'PASSWORD_RESET' | 'PASSWORD_CHANGED_SUCCESSFULLY' | 'CUSTOM';
   email: string;
   userId: string;
   userName?: string;
@@ -58,8 +58,19 @@ export class MailProcessor implements OnModuleInit {
         break;
         
       case 'PASSWORD_RESET':
-        // TODO: Добавить логику для сброса пароля
+        if (!data.code) throw new Error('Password reset code is required');
+        await this.mailService.sendPasswordResetEmail(email, data.code, userId);
         this.logger.log(`Password reset email would be sent to ${email}`);
+        break;
+
+      case 'PASSWORD_CHANGED_SUCCESSFULLY':
+        await this.mailService.sendPasswordChangedEmail(
+          email, 
+          userName || 'Пользователь', 
+          userId,
+          data?.device // передаем информацию об устройстве если есть
+        );
+        this.logger.log(`Password changed notification sent to ${email}`);
         break;
         
       case 'CUSTOM':
@@ -68,6 +79,8 @@ export class MailProcessor implements OnModuleInit {
           subject: data.subject || 'Уведомление от GoalPath',
           text: data.text,
           html: data.html,
+          template: data.template,
+          context: data.context,
           userId,
         });
         break;

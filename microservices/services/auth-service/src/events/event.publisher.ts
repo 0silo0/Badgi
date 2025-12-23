@@ -6,7 +6,7 @@ export class EventPublisher {
   constructor(private readonly rabbitMQService: RabbitMQService) {}
 
   async sendEmailEvent(event: {
-    type: 'WELCOME' | 'CONFIRMATION_CODE' | 'PASSWORD_RESET';
+    type: 'WELCOME' | 'CONFIRMATION_CODE' | 'PASSWORD_RESET' | 'PASSWORD_CHANGED_SUCCESSFULLY';
     email: string;
     userId?: string;
     userName?: string;

@@ -19,7 +19,8 @@
     "lint": "eslint \"src/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:cov": "jest --coverage"
+    "test:cov": "jest --coverage",
+    "postinstall": "node ../../../scripts/copy-prisma-engine.js"
   },
   "dependencies": {
     "@nestjs/bull": "^11.0.4",

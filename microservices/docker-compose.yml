@@ -1,38 +1,6 @@
 version: '3.8'
 
 services:
-  # ==================== DATABASES ====================
-  postgres-main:
-    image: postgres:15-alpine
-    container_name: badgi-postgres-main
-    environment:
-      POSTGRES_DB: badgi_main
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: Qwerty123!
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_main_data:/var/lib/postgresql/data
-      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - badgi-network
-    restart: unless-stopped
-
-  postgres-mail:
-    image: postgres:15-alpine
-    container_name: badgi-postgres-mail
-    environment:
-      POSTGRES_DB: mail_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: Qwerty123!
-    ports:
-      - "5433:5432"
-    volumes:
-      - postgres_mail_data:/var/lib/postgresql/data
-    networks:
-      - badgi-network
-    restart: unless-stopped
-
   # ==================== CACHE & MESSAGE QUEUE ====================
   redis:
     image: redis:7-alpine
