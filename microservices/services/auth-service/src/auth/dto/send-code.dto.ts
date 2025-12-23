@@ -20,11 +20,6 @@ export class ResetPassword {
 
   @IsString()
   password: string;
-
-  @IsString()
-  @MinLength(6)
-  @MaxLength(6)
-  code: string;
 }
 
 // src/auth/dto/register.dto.ts
