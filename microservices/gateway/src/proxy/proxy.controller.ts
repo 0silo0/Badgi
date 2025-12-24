@@ -8,7 +8,6 @@ import { Request, Response } from 'express';
 export class ProxyController {
     constructor(private readonly proxyService: ProxyService) { }
 
-    // Вариант 2: Использовать *path (правильный синтаксис согласно новой версии)
     @All('auth/*path')
     async proxyAuth(
         @Req() req: Request, 

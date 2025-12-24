@@ -1,4 +1,3 @@
-# services/auth-service/Dockerfile (и аналогично для mail-service)
 FROM node:22.12-alpine AS builder
 
 WORKDIR /usr/src/app
