@@ -1,0 +1,148 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ====================== CORE AUTH MODELS ======================
+
+model Account {
+  /// UUID как primary key
+  primarykey      String   @id @default(uuid()) @map("primarykey")
+  
+  /// Логин и email (уникальные)
+  login           String   @unique
+  email           String   @unique
+  
+  /// Информация о верификации
+  isEmailVerified Boolean  @default(false) @map("isemailverified")
+  
+  /// Пароль (захешированный)
+  password        String
+  
+  /// Персональная информация
+  firstName       String?  @map("firstname")
+  lastName        String?  @map("lastname")
+  
+  /// Связь с ролью
+  role            String?
+  roleRef         Role?    @relation("accountRole", fields: [role], references: [primarykey])
+  
+  /// Статус аккаунта
+  status          String?  @default("PENDING")
+  
+  /// Таймстемпы
+  createAt        DateTime @default(now()) @map("createat")
+  editAt          DateTime @default(now()) @updatedAt @map("editat")
+  
+  /// Аватар
+  avatarUrl       String?  @map("avatarurl")
+  
+  /// Создатель аккаунта (если создан администратором)
+  creator         String?
+  creatorRef      Role?    @relation("accountCreator", fields: [creator], references: [primarykey])
+  
+  /// Индексы для оптимизации запросов
+  @@map("accounts")
+  @@index([email], name: "idx_accounts_email")
+  @@index([login], name: "idx_accounts_login")
+  @@index([status], name: "idx_accounts_status")
+  @@index([createAt], name: "idx_accounts_created_at")
+  auditLogs AuditLog[]
+}
+
+model Role {
+  /// UUID как primary key
+  primarykey String    @id @default(uuid()) @map("primarykey")
+  
+  /// Название роли (например, "USER", "ADMIN")
+  name       String    @unique
+  
+  /// Уровень доступа (0 - низший, 100 - высший)
+  level      Int       @default(0)
+  
+  /// Таймстемпы
+  createAt   DateTime  @default(now()) @map("createat")
+  editAt     DateTime  @default(now()) @updatedAt @map("editat")
+  
+  /// Связи
+  accounts   Account[] @relation("accountRole")
+  creators   Account[] @relation("accountCreator")
+  
+  @@map("roles")
+  @@index([name], name: "idx_roles_name")
+  @@index([level], name: "idx_roles_level")
+}
+
+model AuditLog {
+  /// UUID как primary key
+  id           String   @id @default(uuid())
+  
+  /// Действие (LOGIN, LOGOUT, REGISTER, PASSWORD_CHANGE, etc.)
+  action       String
+  
+  /// ID пользователя (может быть null для публичных действий)
+  accountId    String?  @map("accountid")
+  account      Account? @relation(fields: [accountId], references: [primarykey])
+  
+  /// IP адрес
+  ipAddress    String?  @map("ipaddress")
+  
+  /// User agent
+  userAgent    String?  @map("useragent")
+  
+  /// Дополнительные данные (JSON)
+  metadata     Json?  @db.JsonB
+  
+  /// Время события
+  createdAt    DateTime @default(now()) @map("createdat")
+  
+  /// Успешность действия
+  isSuccess    Boolean  @default(true) @map("issuccess")
+  
+  /// Сообщение об ошибке (если есть)
+  errorMessage String?  @map("errormessage")
+  
+  @@map("audit_logs")
+  @@index([action], name: "idx_audit_action")
+  @@index([accountId], name: "idx_audit_account")
+  @@index([createdAt], name: "idx_audit_created")
+  @@index([isSuccess], name: "idx_audit_success")
+}
+
+// ====================== ENUMS ======================
+
+enum AccountStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  DELETED
+  BANNED
+}
+
+enum SessionStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+  LOGGED_OUT
+}
+
+enum AuditAction {
+  LOGIN
+  LOGOUT
+  REGISTER
+  EMAIL_VERIFICATION
+  PASSWORD_RESET_REQUEST
+  PASSWORD_RESET_COMPLETE
+  PROFILE_UPDATE
+  ROLE_CHANGE
+  ACCOUNT_DELETION
+  ACCOUNT_SUSPENSION
+}

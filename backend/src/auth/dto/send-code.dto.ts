@@ -1,4 +1,4 @@
-import { isEAN, IsEmail, IsString, Length } from 'class-validator';
+import { IsEmail, IsString, Length } from 'class-validator';
 
 // src/auth/dto/send-code.dto.ts
 export class SendCodeDto {

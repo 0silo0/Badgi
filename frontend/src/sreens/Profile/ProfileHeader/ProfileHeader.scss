@@ -14,14 +14,18 @@
 
   .avatar-wrapper {
     position: relative;
-    
-    .user-avatar {
-      width: 120px;
-      height: 120px;
-      border-radius: 20px;
-      object-fit: cover;
-      border: 1px solid #ddd;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    width: 120px;
+    height: 120px;
+    border-radius: 20px;
+    object-fit: cover;
+    border: 1px solid #ddd;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+
+    .avatar-placeholder {
+      font-size: 20px;
+      font-weight: 500;
+      color: #718096;
+      align-items: center;
     }
   }
 

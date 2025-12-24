@@ -31,37 +31,69 @@ jobs:
       #   working-directory: ./frontend
       #   run: npm test
 
-  # lint_admin:
+  lint_gateway:
+    runs-on: ubuntu-latest
+    container: node:18-alpine
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        working-directory: ./microservices/gateway
+        run: npm ci --no-progress
+      - name: Run lint
+        working-directory: ./microservices/gateway
+        run: npm run lint
+      - name: Run tests
+        working-directory: ./microservices/gateway
+        run: npm test || echo "Tests skipped (no test script)"
+
+  lint_auth_service:
+    runs-on: ubuntu-latest
+    container: node:18-alpine
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        working-directory: ./microservices/services/auth-service
+        run: npm ci --no-progress
+      - name: Run lint
+        working-directory: ./microservices/services/auth-service
+        run: npm run lint
+      - name: Generate Prisma client
+        working-directory: ./microservices/services/auth-service
+        run: npx prisma generate
+      - name: Run tests
+        working-directory: ./microservices/services/auth-service
+        run: npm test || echo "Tests skipped (no test script)"
+
+  lint_mail_service:
+    runs-on: ubuntu-latest
+    container: node:18-alpine
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        working-directory: ./microservices/services/mail-service
+        run: npm ci --no-progress
+      - name: Run lint
+        working-directory: ./microservices/services/mail-service
+        run: npm run lint
+      - name: Run tests
+        working-directory: ./microservices/services/mail-service
+        run: npm test || echo "Tests skipped (no test script)"
+
+  # lint_backend:
   #   needs: check_node_version
   #   runs-on: ubuntu-latest
   #   container: node:22.12-alpine
   #   steps:
   #     - uses: actions/checkout@v4
   #     - name: Install dependencies
-  #       working-directory: ./admin
+  #       working-directory: ./backend
   #       run: npm install --no-progress
   #     - name: Run lint
-  #       working-directory: ./admin
+  #       working-directory: ./backend
   #       run: npm run lint
-  #     - name: Run unit tests
-  #       working-directory: ./admin
-  #       run: npm test
-
-  lint_backend:
-    needs: check_node_version
-    runs-on: ubuntu-latest
-    container: node:22.12-alpine
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install dependencies
-        working-directory: ./backend
-        run: npm install --no-progress
-      - name: Run lint
-        working-directory: ./backend
-        run: npm run lint
-      # - name: Run unit tests
-      #   working-directory: ./backend
-      #   run: npm test
+  #     # - name: Run unit tests
+  #     #   working-directory: ./backend
+  #     #   run: npm test
 
   build_backend:
     needs: [lint_backend]

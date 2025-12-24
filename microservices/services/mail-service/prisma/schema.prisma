@@ -1,0 +1,38 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model EmailLog {
+  id          String   @id @default(uuid())
+  
+  // Дублируем пользовательские данные (для производительности)
+  userId      String?  @map("user_id")      // ID из auth-service
+  userEmail   String   @map("user_email")   // Email получателя
+  userName    String?  @map("user_name")    // Имя пользователя (для персонализации)
+  
+  // Данные письма
+  template    String                       // Шаблон (welcome, reset-password и т.д.)
+  subject     String
+  status      String   @default("PENDING")
+  error       String?                       // Ошибка, если FAILED
+  
+  // Поля для аналитики
+  openedAt    DateTime? @map("opened_at")
+  clickedAt   DateTime? @map("clicked_at")
+  
+  // Технические поля
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+  
+  @@map("email_logs")
+  @@index([userId])
+  @@index([userEmail])
+  @@index([status])
+  @@index([createdAt])
+}

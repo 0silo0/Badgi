@@ -9,12 +9,11 @@ import {
 } from 'react-icons/fi';
 import './Header.scss';
 import { useAuth } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function Header() {
   const { user: authUser } = useAuth();
-  const handleAction = (actionName: string) => () => {
-    console.log(`${actionName} clicked`);
-  };
+  const navigate = useNavigate();
 
   return (
     <header className="header">
@@ -66,7 +65,7 @@ export default function Header() {
         <span className="label">Поддержка</span>
       </button> */}
       
-      <div className="avatar">
+      <div className="avatar" onClick={() => navigate('/profile')}>
         {authUser?.avatarUrl ? (
             <img
               src={authUser?.avatarUrl || '/default-avatar.png'}
